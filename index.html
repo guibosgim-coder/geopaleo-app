@@ -5,8 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#1e1b18">
-  <title>GEOPALEO — Cartografía y Campo IGME</title>
+  <title>GEOPALEO — Visor ArcGIS IGME</title>
+  
+  <!-- Manifiesto PWA embebido para poder instalar la app en el móvil -->
+  <link rel="manifest" href='data:application/manifest+json,{"name":"GEOPALEO IGME","short_name":"GEOPALEO","start_url":".","display":"standalone","background_color":"#1e1b18","theme_color":"#1e1b18","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%231e1b18%27/%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2740%27 fill=%27%230284c7%27/%3E%3Cpath d=%27M50 50 C50 42, 58 40, 62 45 C66 52, 56 64, 45 61 C31 57, 28 40, 39 28 C53 14, 75 22, 78 45 C80 68, 56 85, 31 74 C15 66, 15 40, 28 22%27 fill=%27none%27 stroke=%27%23fff%27 stroke-width=%276%27 stroke-linecap=%27round%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}' />
+
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -26,50 +31,81 @@
 
     /* Barra Superior */
     #topbar {
-      position: fixed; top: 10px; left: 10px; right: 10px; z-index: 1000;
-      display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+      position: fixed; top: 8px; left: 8px; right: 8px; z-index: 1000;
+      display: flex; flex-direction: column; gap: 6px; pointer-events: none;
     }
     .panel-control {
-      background: rgba(28, 25, 23, 0.94); backdrop-filter: blur(8px);
-      color: #f5f5f4; padding: 10px 14px; border-radius: 14px;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.5); pointer-events: auto;
+      background: rgba(28, 25, 23, 0.95); backdrop-filter: blur(10px);
+      color: #f5f5f4; padding: 10px 12px; border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.55); pointer-events: auto;
       border: 1px solid rgba(255,255,255,0.12);
     }
     .header-row {
-      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      display: flex; justify-content: space-between; align-items: center; gap: 6px;
     }
     .app-title {
-      font-weight: 800; font-size: 13.5px; letter-spacing: 0.4px;
-      color: #fbbf24; display: flex; align-items: center; gap: 6px;
+      font-weight: 800; font-size: 13px; letter-spacing: 0.3px;
+      color: #fbbf24; display: flex; align-items: center; gap: 5px;
     }
     .btn-acciones-top { display: flex; gap: 6px; }
     .btn-gps, .btn-menu-lateral {
       color: #fff; border: none;
-      padding: 6px 11px; border-radius: 8px; font-size: 11.5px;
+      padding: 6px 10px; border-radius: 8px; font-size: 11.5px;
       font-weight: 800; cursor: pointer; white-space: nowrap;
-      display: flex; align-items: center; gap: 5px; transition: all 0.2s;
+      display: flex; align-items: center; gap: 4px; transition: all 0.2s;
     }
     .btn-gps { background: #0284c7; }
     .btn-gps.buscando { background: #d97706; animation: parpadeo 1s infinite alternate; }
-    .btn-gps.activo { background: #15803d; box-shadow: 0 0 10px rgba(21, 128, 61, 0.6); }
+    .btn-gps.activo { background: #15803d; box-shadow: 0 0 10px rgba(21, 128, 61, 0.7); }
     .btn-menu-lateral { background: #57534e; }
 
     @keyframes parpadeo { from { opacity: 1; } to { opacity: 0.6; } }
 
-    .layer-group { display: flex; gap: 6px; margin-top: 8px; }
+    /* Buscador de Localidades estilo ArcGIS */
+    .buscador-row {
+      display: flex; gap: 6px; margin-top: 8px; position: relative;
+    }
+    .buscador-input {
+      flex: 1; background: #292524; color: #fff; border: 1px solid #57534e;
+      padding: 7px 10px; border-radius: 8px; font-size: 12.5px; outline: none;
+    }
+    .buscador-input:focus { border-color: #fbbf24; }
+    .buscador-input::placeholder { color: #a8a29e; }
+    .btn-buscar {
+      background: #fbbf24; color: #1c1917; border: none;
+      padding: 0 12px; border-radius: 8px; font-weight: 800; font-size: 13px; cursor: pointer;
+    }
+    #resultados-busqueda {
+      position: absolute; top: 38px; left: 0; right: 0;
+      background: #292524; border: 1px solid #57534e; border-radius: 10px;
+      max-height: 210px; overflow-y: auto; z-index: 3000; display: none;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.7);
+    }
+    .item-resultado {
+      padding: 9px 12px; border-bottom: 1px solid #44403c;
+      font-size: 12px; color: #f5f5f4; cursor: pointer; line-height: 1.3;
+    }
+    .item-resultado:last-child { border-bottom: none; }
+    .item-resultado:hover, .item-resultado:active { background: #44403c; color: #fbbf24; }
+
+    /* Selector de Capas */
+    .layer-group { display: flex; gap: 5px; margin-top: 8px; }
     .btn-capa {
       flex: 1; background: #292524; color: #d6d3d1; border: 1px solid #44403c;
-      padding: 8px 6px; border-radius: 8px; font-size: 11.5px; font-weight: 600;
+      padding: 7px 4px; border-radius: 8px; font-size: 11px; font-weight: 600;
       cursor: pointer; text-align: center; transition: all 0.2s;
     }
     .btn-capa.activo {
       background: #fbbf24; color: #1c1917; border-color: #fbbf24; font-weight: 800;
     }
     .opacidad-row {
-      display: flex; align-items: center; gap: 8px; margin-top: 8px;
-      font-size: 11px; color: #a8a29e;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 7px;
+      font-size: 11px; color: #d6d3d1;
     }
     .opacidad-row input { flex: 1; accent-color: #fbbf24; cursor: pointer; }
+    .aviso-zoom {
+      font-size: 10.5px; color: #fbbf24; text-align: center; margin-top: 4px; font-weight: 600;
+    }
 
     /* Chips de Eras */
     #barra-eras {
@@ -78,7 +114,7 @@
     }
     #barra-eras::-webkit-scrollbar { display: none; }
     .chip-era {
-      padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 800;
+      padding: 5px 11px; border-radius: 20px; font-size: 11px; font-weight: 800;
       border: 2px solid rgba(255,255,255,0.25); cursor: pointer; white-space: nowrap;
       box-shadow: 0 2px 6px rgba(0,0,0,0.35); transition: transform 0.15s;
     }
@@ -227,7 +263,7 @@
       padding: 8px; border-radius: 8px; font-size: 11.5px; font-weight: 700; cursor: pointer; text-align: center;
     }
 
-    /* Modal para Añadir Afloramiento sin usar prompt() */
+    /* Modal para Añadir Afloramiento */
     #modal-nuevo {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
@@ -258,7 +294,7 @@
   <div id="topbar">
     <div class="panel-control">
       <div class="header-row">
-        <div class="app-title">&#9935; GEOPALEO · IGME</div>
+        <div class="app-title">&#9935; GEOPALEO · ARCGIS IGME</div>
         <div class="btn-acciones-top">
           <button id="btn-gps" class="btn-gps" onclick="toggleGPS()">
             <span>🐚</span> <span id="txt-gps">GPS</span>
@@ -266,15 +302,28 @@
           <button class="btn-menu-lateral" onclick="toggleMenuLateral(true)">⚙️ Menú</button>
         </div>
       </div>
+
+      <!-- Buscador de Pueblos / Zonas -->
+      <div class="buscador-row">
+        <input type="text" id="input-buscador" class="buscador-input" placeholder="Buscar pueblo, monte o zona..." onkeydown="if(event.key==='Enter') buscarLocalidad()">
+        <button class="btn-buscar" onclick="buscarLocalidad()">🔍</button>
+        <div id="resultados-busqueda"></div>
+      </div>
+
+      <!-- Selector de Capas -->
       <div class="layer-group">
-        <button class="btn-capa activo" onclick="cambiarModoMapa('hibrido', this)">Satélite + IGME</button>
-        <button class="btn-capa" onclick="cambiarModoMapa('igme', this)">Solo Geológico</button>
+        <button class="btn-capa activo" onclick="cambiarModoMapa('hibrido', this)">Satélite + MAGNA</button>
+        <button class="btn-capa" onclick="cambiarModoMapa('igme', this)">Solo MAGNA (Números)</button>
         <button class="btn-capa" onclick="cambiarModoMapa('satelite', this)">Solo Satélite</button>
       </div>
+
       <div class="opacidad-row" id="control-opacidad">
-        <span>Opacidad IGME:</span>
-        <input type="range" min="0" max="100" value="65" oninput="ajustarOpacidadIGME(this.value)">
-        <span id="val-opacidad">65%</span>
+        <span>Opacidad Geológico:</span>
+        <input type="range" min="0" max="100" value="75" oninput="ajustarOpacidadIGME(this.value)">
+        <span id="val-opacidad">75%</span>
+      </div>
+      <div id="aviso-zoom-magna" class="aviso-zoom">
+        🔍 Acerca el zoom a una zona para ver los números de los estratos (MAGNA 50k)
       </div>
     </div>
 
@@ -314,8 +363,10 @@
     </div>
 
     <div style="border-top: 1px solid rgba(255,255,255,0.15); padding-top: 12px; font-size: 11.5px; color: #a8a29e; line-height: 1.4;">
-      <b style="color:#fbbf24;">💡 Truco de campo:</b><br>
-      Haz <b>3 toques rápidos</b> en cualquier zona del mapa para consultar al IGME qué piso estratigráfico y litología tienes debajo.
+      <b style="color:#fbbf24;">💡 Cómo ver los números y edades:</b><br>
+      1. Usa el buscador 🔍 para ir a un pueblo.<br>
+      2. Verás cada estrato con su <b>número oficial del IGME</b>.<br>
+      3. Haz <b>3 toques rápidos</b> sobre cualquier estrato o número para leer su Edad (Calloviense, Oxfordiense...) y Litología.
     </div>
   </div>
 
@@ -334,7 +385,7 @@
       <h3>📍 Nuevo Afloramiento</h3>
       <div class="campo-form">
         <label>Nombre del punto / paraje</label>
-        <input type="text" id="nuevo-nombre" placeholder="Ej: Barranco de la Hoz - Nivel 3">
+        <input type="text" id="nuevo-nombre" placeholder="Ej: Barranco de la Hoz - Estrato 14">
       </div>
       <div class="campo-form">
         <label>Era Geológica</label>
@@ -346,16 +397,16 @@
         </select>
       </div>
       <div class="campo-form">
-        <label>Piso / Edad detallada</label>
+        <label>Piso / Edad detallada (o N.º MAGNA)</label>
         <input type="text" id="nuevo-edad" placeholder="Ej: Calloviense - Oxfordiense">
       </div>
       <div class="campo-form">
         <label>Litología observada</label>
-        <input type="text" id="nuevo-lito" placeholder="Ej: Calizas oolíticas y margas">
+        <input type="text" id="nuevo-lito" placeholder="Ej: Calizas con oolitos ferruginosos">
       </div>
       <div class="campo-form">
         <label>Fósiles / Icnofósiles</label>
-        <input type="text" id="nuevo-fosiles" placeholder="Ej: Ammonites, Cruziana...">
+        <input type="text" id="nuevo-fosiles" placeholder="Ej: Ammonites, Belemnites...">
       </div>
       <div class="modal-botones">
         <button class="btn-cancelar-modal" onclick="cerrarModalNuevo()">Cancelar</button>
@@ -386,7 +437,7 @@
         <input type="text" id="edit-ambiente" class="input-editable">
       </div>
       <div class="dato-item">
-        <div class="dato-label">Hoja MAGNA / Edad</div>
+        <div class="dato-label">Hoja MAGNA / Sigla</div>
         <input type="text" id="edit-magna" class="input-editable">
       </div>
     </div>
@@ -398,7 +449,7 @@
 
     <div class="seccion-campo" style="margin-top: 10px; padding-top: 10px;">
       <h3>Notas de campaña y fotografías in situ</h3>
-      <textarea id="campo-notas" placeholder="Anota buzamiento, tafonomía o contexto sin alterar el terreno..."></textarea>
+      <textarea id="campo-notas" placeholder="Anota número de estrato MAGNA, buzamiento o tafonomía..."></textarea>
       
       <div class="acciones-campo">
         <button class="btn-accion btn-guardar" onclick="guardarCambiosYacimiento()">💾 Guardar Cambios</button>
@@ -419,7 +470,6 @@
       'Paleógeno': '#FD9A52'
     };
 
-    // Icono SVG de Ammonite diseñado a medida para el GPS
     const SVG_AMMONITE = `
       <svg viewBox="0 0 64 64" width="24" height="24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round">
         <path d="M32 32 C32 26, 38 24, 40 28 C43 34, 36 42, 28 40 C18 37, 16 24, 24 16 C34 6, 50 12, 52 28 C54 46, 36 58, 18 50 C6 44, 6 24, 16 12" />
@@ -545,48 +595,132 @@
     let filtroEraActual = 'TODAS';
     let coordsPendientesNuevo = null;
 
-    // Inicialización del Mapa
-    const mapa = L.map('mapa', { zoomControl: false, doubleClickZoom: false }).setView([40.2, -1.5], 6);
-    L.control.zoom({ position: 'bottomleft' }).addTo(mapa);
-
-    const capaSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
-      attribution: 'Satélite © Esri / IGN'
+    // ====================================================
+    // MOTOR ARCGIS REST NATIVO DEL IGME (CON NÚMEROS Y SÍMBOLOS)
+    // ====================================================
+    L.TileLayer.ArcGISRest = L.TileLayer.extend({
+      initialize: function(url, options) {
+        this._baseUrl = url;
+        L.TileLayer.prototype.initialize.call(this, url, options);
+      },
+      getTileUrl: function(coords) {
+        const tileBounds = this._tileCoordsToNwSe(coords);
+        const nw = L.Projection.SphericalMercator.project(tileBounds[0]);
+        const se = L.Projection.SphericalMercator.project(tileBounds[1]);
+        const bbox = [nw.x, se.y, se.x, nw.y].join(',');
+        const size = this.getTileSize();
+        // Petición directa al endpoint /export de ArcGIS Server incluyendo todas las capas y etiquetas (números)
+        return `${this._baseUrl}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${size.x},${size.y}&dpi=96&format=png32&transparent=true&f=image`;
+      }
     });
 
-    const capaTopoBase = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const mapa = L.map('mapa', { zoomControl: false, doubleClickZoom: false }).setView([39.9, -0.6], 7);
+    L.control.zoom({ position: 'bottomleft' }).addTo(mapa);
+
+    // 1. Capa Satélite Esri ArcGIS
+    const capaSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: 'Satélite © Esri'
+    });
+
+    // 2. Capa Topográfica Clara (para modo Solo MAGNA)
+    const capaTopoBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
       opacity: 0.45
     });
 
-    const capaIGME1M = L.tileLayer.wms('https://mapas.igme.es/gis/services/Cartografia_Geologica/IGME_Geologico_1M/MapServer/WMSServer', {
-      layers: '0,1,2,3',
-      format: 'image/png',
-      transparent: true,
-      opacity: 0.65,
-      maxZoom: 11,
-      attribution: '© IGME 1M'
-    });
+    // 3. Capa Geológica ArcGIS IGME 1:1.000.000 (para zooms lejanos 5 a 11)
+    const capaArcGIS1M = new L.TileLayer.ArcGISRest(
+      'https://mapas.igme.es/gis/rest/services/Cartografia_Geologica/IGME_Geologico_1M/MapServer',
+      { opacity: 0.75, minZoom: 5, maxZoom: 11, attribution: '© IGME ArcGIS 1M' }
+    );
 
-    const capaIGME50k = L.tileLayer.wms('https://mapas.igme.es/gis/services/Cartografia_Geologica/IGME_MAGNA_50/MapServer/WMSServer', {
-      layers: '0,1,2,3,4,5,6',
-      format: 'image/png',
-      transparent: true,
-      opacity: 0.65,
-      minZoom: 10,
+    // 4. Capa Geológica ArcGIS MAGNA 1:50.000 COMPLETA CON NÚMEROS DE ESTRATOS (para zooms 12 a 19)
+    const capaArcGIS50k = new L.TileLayer.ArcGISRest(
+      'https://mapas.igme.es/gis/rest/services/Cartografia_Geologica/IGME_MAGNA_50/MapServer',
+      { opacity: 0.75, minZoom: 12, maxZoom: 19, attribution: '© IGME ArcGIS MAGNA 50k' }
+    );
+
+    // 5. Etiquetas de Pueblos y Carreteras de ArcGIS encima para orientarse siempre
+    const capaEtiquetasLugares = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
-      attribution: '© IGME MAGNA 50k'
+      opacity: 0.85,
+      zIndex: 500
     });
 
     capaSatelite.addTo(mapa);
-    capaIGME1M.addTo(mapa);
-    capaIGME50k.addTo(mapa);
+    capaArcGIS1M.addTo(mapa);
+    capaArcGIS50k.addTo(mapa);
+    capaEtiquetasLugares.addTo(mapa);
+
+    // Aviso inteligente de nivel de zoom para ver los números del MAGNA 50k
+    function actualizarAvisoZoom() {
+      const z = mapa.getZoom();
+      const aviso = document.getElementById('aviso-zoom-magna');
+      if (z >= 12) {
+        aviso.innerHTML = '✅ <b>MAGNA 1:50.000 activo:</b> Mostrando números de estratos y símbolos (3 toques para leer ficha)';
+        aviso.style.color = '#4ade80';
+      } else {
+        aviso.innerHTML = '🔍 Acerca más el mapa ( o busca un pueblo ) para ver los números de los estratos MAGNA 50k';
+        aviso.style.color = '#fbbf24';
+      }
+    }
+    mapa.on('zoomend', actualizarAvisoZoom);
+    actualizarAvisoZoom();
 
     setTimeout(() => mapa.invalidateSize(), 300);
 
-    // ==========================================
+    // ====================================================
+    // BUSCADOR DE LOCALIDADES Y ZONAS (ARCGIS GEOCODER + NOMINATIM)
+    // ====================================================
+    async function buscarLocalidad() {
+      const input = document.getElementById('input-buscador');
+      const contenedor = document.getElementById('resultados-busqueda');
+      const texto = input.value.trim();
+
+      if (!texto) {
+        contenedor.style.display = 'none';
+        return;
+      }
+
+      contenedor.style.display = 'block';
+      contenedor.innerHTML = '<div class="item-resultado">🔍 Buscando en España...</div>';
+
+      try {
+        // Usamos el Geocodificador mundial de ArcGIS filtrado a España (ESP)
+        const urlArcGIS = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?SingleLine=${encodeURIComponent(texto)}&countryCode=ESP&maxLocations=6&f=json`;
+        const res = await fetch(urlArcGIS);
+        const data = await res.json();
+
+        if (data && data.candidates && data.candidates.length > 0) {
+          contenedor.innerHTML = '';
+          data.candidates.forEach(cand => {
+            const div = document.createElement('div');
+            div.className = 'item-resultado';
+            div.innerHTML = `📍 <b>${cand.address}</b>`;
+            div.onclick = () => {
+              mapa.flyTo([cand.location.y, cand.location.x], 14, { duration: 1.2 });
+              contenedor.style.display = 'none';
+              input.value = cand.address;
+            };
+            contenedor.appendChild(div);
+          });
+        } else {
+          contenedor.innerHTML = '<div class="item-resultado">No se encontraron localidades con ese nombre.</div>';
+        }
+      } catch (e) {
+        contenedor.innerHTML = '<div class="item-resultado">Error de red al buscar.</div>';
+      }
+    }
+
+    // Cerrar desplegable de búsqueda al tocar el mapa
+    mapa.on('mousedown', () => {
+      document.getElementById('resultados-busqueda').style.display = 'none';
+    });
+
+    // ====================================================
     // SISTEMA GPS EN TIEMPO REAL CON AMMONITE SVG
-    // ==========================================
+    // ====================================================
     let watchId = null;
     let markerGPS = null;
     let circleGPS = null;
@@ -614,7 +748,6 @@
 
       btnGPS.className = 'btn-gps buscando';
       txtGPS.textContent = 'Buscando...';
-
       iniciarSeguimientoGPS(true);
     }
 
@@ -634,7 +767,7 @@
           txtGPS.textContent = `±${Math.round(acc)}m`;
 
           if (!centradoInicialGPS) {
-            mapa.flyTo([lat, lon], 16, { duration: 1.2 });
+            mapa.flyTo([lat, lon], 15, { duration: 1.2 });
             centradoInicialGPS = true;
           }
 
@@ -663,14 +796,13 @@
           }
         },
         function(err) {
-          // Si falla en alta precisión (ej. interior o timeout), reintenta automáticamente con ubicación rápida
           if (altaPrecision) {
             iniciarSeguimientoGPS(false);
           } else {
             btnGPS.className = 'btn-gps';
             txtGPS.textContent = 'GPS';
             watchId = null;
-            alert("No se pudo obtener señal GPS. Asegúrate de haber dado permiso de Ubicación a Chrome y tener el GPS encendido.");
+            alert("No se pudo obtener señal GPS. Revisa que la Ubicación esté activada en tu móvil.");
           }
         },
         {
@@ -681,20 +813,18 @@
       );
     }
 
-    // ==========================================
-    // GESTOR UNIFICADO DE CLICS Y TRIPLE CLIC IGME
-    // ==========================================
+    // ====================================================
+    // TRIPLE CLIC: IDENTIFICACIÓN DE ESTRATO Y NÚMERO EN ARCGIS IGME
+    // ====================================================
     let contadorClicks = 0;
     let timerClick = null;
 
     mapa.on('click', function(e) {
-      // 1. Si estamos en modo "Añadir Afloramiento", abrimos el formulario directamente
       if (modoAnadirPunto) {
         abrirModalNuevoPunto(e.latlng);
         return;
       }
 
-      // 2. Contabilizar toques rápidos para detectar Triple Clic (consulta estratigráfica IGME)
       contadorClicks++;
       clearTimeout(timerClick);
 
@@ -712,12 +842,11 @@
       const popup = L.popup()
         .setLatLng(latlng)
         .setContent(`<div style="text-align:center; padding:6px; font-size:12.5px;">
-                       <b>🔍 Consultando cartografía IGME...</b><br>
-                       <span style="color:#57534e; font-size:11px;">Leyendo unidad estratigráfica en ${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}</span>
+                       <b>🔍 Leyendo número y estrato en ArcGIS IGME...</b><br>
+                       <span style="color:#57534e; font-size:11px;">Coordenadas: ${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}</span>
                      </div>`)
         .openOn(mapa);
 
-      // Petición REST identify directa al servidor Cartográfico del IGME (MAGNA 50k)
       const bounds = mapa.getBounds();
       const size = mapa.getSize();
       const params = new URLSearchParams({
@@ -726,44 +855,44 @@
         geometryType: 'esriGeometryPoint',
         sr: '4326',
         layers: 'all',
-        tolerance: '6',
+        tolerance: '8',
         mapExtent: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
         imageDisplay: `${size.x},${size.y},96`,
         returnGeometry: 'false'
       });
 
-      const targetUrl50k = `https://mapas.igme.es/gis/rest/services/Cartografia_Geologica/IGME_MAGNA_50/MapServer/identify?${params.toString()}`;
-      const targetUrl1M = `https://mapas.igme.es/gis/rest/services/Cartografia_Geologica/IGME_Geologico_1M/MapServer/identify?${params.toString()}`;
+      const url50k = `https://mapas.igme.es/gis/rest/services/Cartografia_Geologica/IGME_MAGNA_50/MapServer/identify?${params.toString()}`;
+      const url1M = `https://mapas.igme.es/gis/rest/services/Cartografia_Geologica/IGME_Geologico_1M/MapServer/identify?${params.toString()}`;
 
       try {
-        let data = await fetchConRespaldoCORS(targetUrl50k);
+        let data = await fetchConRespaldoCORS(url50k);
         if (!data || !data.results || data.results.length === 0) {
-          data = await fetchConRespaldoCORS(targetUrl1M);
+          data = await fetchConRespaldoCORS(url1M);
         }
 
         if (data && data.results && data.results.length > 0) {
-          // Buscamos la capa cronoestratigráfica / litológica entre los resultados
-          let info = data.results.find(r => r.attributes && (r.attributes.DESCRIP || r.attributes.EDAD || r.attributes.LITOLOGIA || r.attributes.Cronoestratigrafia)) || data.results[0];
+          // Priorizar el polígono cronoestratigráfico que contiene el número de unidad, edad y litología
+          let info = data.results.find(r => r.attributes && (r.attributes.DESCRIP || r.attributes.LITOLOGIA || r.attributes.EDAD || r.attributes.SIGLA)) || data.results[0];
           const attr = info.attributes || {};
 
+          const numeroOSigla = attr.SIGLA || attr.CODIGO || attr.NUM_UNIDAD || attr.ID_UNIDAD || attr.OBJECTID || '';
           const edad = attr.EDAD || attr.Edad || attr.CRONO || attr.Cronoestratigrafia || attr.SISTEMA || attr.SERIE || info.layerName || 'Unidad Geológica';
-          const lito = attr.DESCRIP || attr.LITOLOGIA || attr.Litologia || attr.DEFINICION || attr.Observaciones || info.value || 'Sin descripción detallada';
-          const sigla = attr.SIGLA || attr.CODIGO || attr.ID_UNIDAD || '';
+          const lito = attr.DESCRIP || attr.LITOLOGIA || attr.Litologia || attr.DEFINICION || info.value || 'Consultar leyenda MAGNA';
 
           const htmlRes = `
-            <div style="min-width:230px; max-width:270px; font-size:12.5px; line-height:1.4;">
-              <div style="background:#b45309; color:#fff; padding:5px 8px; border-radius:6px; font-weight:800; margin-bottom:6px;">
-                ⛰️ IGME · ${edad} ${sigla ? `(${sigla})` : ''}
+            <div style="min-width:235px; max-width:280px; font-size:12.5px; line-height:1.4;">
+              <div style="background:#b45309; color:#fff; padding:6px 9px; border-radius:6px; font-weight:800; margin-bottom:6px;">
+                ⛰️ Estrato ${numeroOSigla ? `[#${numeroOSigla}]` : ''} · ${edad}
               </div>
               <div style="margin-bottom:6px; color:#292524;">
-                <b>Litología / Unidad:</b><br>${lito}
+                <b>Litología (IGME):</b><br>${lito}
               </div>
               <div style="font-family:monospace; font-size:10.5px; color:#57534e; margin-bottom:8px;">
                 WGS84: ${latlng.lat.toFixed(4)}°N, ${latlng.lng.toFixed(4)}°E
               </div>
-              <button onclick="crearPuntoDesdeIGME(${latlng.lat}, ${latlng.lng}, '${edad.replace(/'/g, "")}', '${lito.replace(/'/g, "")}')" 
-                style="width:100%; background:#15803d; color:#fff; border:none; padding:7px; border-radius:6px; font-weight:700; cursor:pointer; font-size:11.5px;">
-                + Registrar como Afloramiento
+              <button onclick="crearPuntoDesdeIGME(${latlng.lat}, ${latlng.lng}, '${(numeroOSigla ? 'Estrato #' + numeroOSigla + ' - ' : '') + edad.replace(/'/g, "")}', '${lito.replace(/'/g, "")}')" 
+                style="width:100%; background:#15803d; color:#fff; border:none; padding:8px; border-radius:6px; font-weight:700; cursor:pointer; font-size:11.5px;">
+                + Guardar en mis Afloramientos
               </button>
             </div>
           `;
@@ -781,7 +910,6 @@
         const res = await fetch(url);
         if (res.ok) return await res.json();
       } catch (e) {
-        // Si el navegador bloquea por CORS, usamos proxy limpio allorigins
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
         const resProxy = await fetch(proxyUrl);
         if (resProxy.ok) {
@@ -795,10 +923,10 @@
     function mostrarPopupAlternativoIGME(popup, latlng) {
       popup.setContent(`
         <div style="min-width:210px; text-align:center; font-size:12.5px;">
-          <b style="color:#b45309;">🗺️ Punto de Coordenadas</b><br>
+          <b style="color:#b45309;">🗺️ Coordenadas seleccionadas</b><br>
           <span style="font-size:11px; color:#57534e;">Lat: ${latlng.lat.toFixed(4)} | Lon: ${latlng.lng.toFixed(4)}</span><br><br>
           <button onclick="abrirModalNuevoPunto({lat:${latlng.lat}, lng:${latlng.lng}})" 
-            style="width:100%; background:#fbbf24; color:#1c1917; border:none; padding:7px; border-radius:6px; font-weight:800; cursor:pointer; margin-bottom:6px;">
+            style="width:100%; background:#fbbf24; color:#1c1917; border:none; padding:7px; border-radius:6px; font-weight:800; cursor:pointer;">
             + Añadir Afloramiento aquí
           </button>
         </div>
@@ -810,9 +938,9 @@
       abrirModalNuevoPunto({ lat, lng }, edad, lito);
     }
 
-    // ==========================================
+    // ====================================================
     // CONTROL DE CAPAS Y MARCADORES
-    // ==========================================
+    // ====================================================
     function cambiarModoMapa(modo, btnElemento) {
       document.querySelectorAll('.btn-capa').forEach(b => b.classList.remove('activo'));
       btnElemento.classList.add('activo');
@@ -821,24 +949,24 @@
       if (modo === 'satelite') {
         if (!mapa.hasLayer(capaSatelite)) capaSatelite.addTo(mapa);
         if (mapa.hasLayer(capaTopoBase)) mapa.removeLayer(capaTopoBase);
-        if (mapa.hasLayer(capaIGME1M)) mapa.removeLayer(capaIGME1M);
-        if (mapa.hasLayer(capaIGME50k)) mapa.removeLayer(capaIGME50k);
+        if (mapa.hasLayer(capaArcGIS1M)) mapa.removeLayer(capaArcGIS1M);
+        if (mapa.hasLayer(capaArcGIS50k)) mapa.removeLayer(capaArcGIS50k);
         ctrlOpacidad.style.display = 'none';
       } else if (modo === 'igme') {
         if (mapa.hasLayer(capaSatelite)) mapa.removeLayer(capaSatelite);
         if (!mapa.hasLayer(capaTopoBase)) capaTopoBase.addTo(mapa);
-        if (!mapa.hasLayer(capaIGME1M)) capaIGME1M.addTo(mapa);
-        if (!mapa.hasLayer(capaIGME50k)) capaIGME50k.addTo(mapa);
+        if (!mapa.hasLayer(capaArcGIS1M)) capaArcGIS1M.addTo(mapa);
+        if (!mapa.hasLayer(capaArcGIS50k)) capaArcGIS50k.addTo(mapa);
         ajustarOpacidadIGME(95);
         document.querySelector('#control-opacidad input').value = 95;
         ctrlOpacidad.style.display = 'flex';
       } else {
         if (mapa.hasLayer(capaTopoBase)) mapa.removeLayer(capaTopoBase);
         if (!mapa.hasLayer(capaSatelite)) capaSatelite.addTo(mapa);
-        if (!mapa.hasLayer(capaIGME1M)) capaIGME1M.addTo(mapa);
-        if (!mapa.hasLayer(capaIGME50k)) capaIGME50k.addTo(mapa);
-        ajustarOpacidadIGME(65);
-        document.querySelector('#control-opacidad input').value = 65;
+        if (!mapa.hasLayer(capaArcGIS1M)) capaArcGIS1M.addTo(mapa);
+        if (!mapa.hasLayer(capaArcGIS50k)) capaArcGIS50k.addTo(mapa);
+        ajustarOpacidadIGME(75);
+        document.querySelector('#control-opacidad input').value = 75;
         ctrlOpacidad.style.display = 'flex';
       }
       setTimeout(() => mapa.invalidateSize(), 150);
@@ -846,8 +974,8 @@
 
     function ajustarOpacidadIGME(valor) {
       const op = valor / 100;
-      capaIGME1M.setOpacity(op);
-      capaIGME50k.setOpacity(op);
+      capaArcGIS1M.setOpacity(op);
+      capaArcGIS50k.setOpacity(op);
       document.getElementById('val-opacidad').textContent = valor + '%';
     }
 
@@ -916,9 +1044,9 @@
       marker.addTo(grupoMarcadores);
     }
 
-    // ==========================================
+    // ====================================================
     // INTERFAZ: FICHAS, MODAL Y FOTOS
-    // ==========================================
+    // ====================================================
     function toggleModoDino() {
       modoDinoActivo = !modoDinoActivo;
       const btnDino = document.getElementById('btn-modo-dino');
@@ -1018,7 +1146,7 @@
       cargarGaleriaYacimiento(yac.id);
 
       document.getElementById('ficha').classList.add('abierta');
-      mapa.flyTo([yac.lat, yac.lon], Math.max(mapa.getZoom(), 13), { duration: 0.7 });
+      mapa.flyTo([yac.lat, yac.lon], Math.max(mapa.getZoom(), 14), { duration: 0.7 });
     }
 
     function cerrarFicha() {
@@ -1110,9 +1238,9 @@
       cargarGaleriaYacimiento(id);
     }
 
-    // ==========================================
+    // ====================================================
     // EXPORTAR E IMPORTAR BACKUP JSON
-    // ==========================================
+    // ====================================================
     function exportarBackup() {
       const backup = {};
       for (let i = 0; i < localStorage.length; i++) {
