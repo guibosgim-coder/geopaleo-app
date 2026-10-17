@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1e1b18">
+  <title>Pedres Proves — IGME</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --bg-dark: #1e1b18;
+      --card-bg: #fdfbf7;
+      --accent: #b45309;
+      --text-main: #292524;
+      --text-muted: #57534e;
+    }
+    html, body {
+      margin: 0; padding: 0; height: 100%; width: 100%;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg-dark); overflow: hidden;
+    }
+    #mapa { position: absolute; top: 0; bottom: 0; left: 0; right: 0; width: 100%; height: 100%; z-index: 1; }
+
+    #topbar {
+      position: fixed; top: 10px; left: 10px; right: 10px; z-index: 1000;
+      display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    }
+    .panel-control {
+      background: rgba(28, 25, 23, 0.92); backdrop-filter: blur(8px);
+      color: #f5f5f4; padding: 10px 14px; border-radius: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.45); pointer-events: auto;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .header-row {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    }
+    .app-title {
+      font-weight: 800; font-size: 13.5px; letter-spacing: 0.4px;
+      color: #fbbf24; display: flex; align-items: center; gap: 6px;
+    }
+    .btn-acciones-top { display: flex; gap: 6px; }
+    .btn-gps, .btn-menu-lateral {
+      color: #fff; border: none;
+      padding: 5px 10px; border-radius: 8px; font-size: 11px;
+      font-weight: 800; cursor: pointer; white-space: nowrap;
+    }
+    .btn-gps { background: #0284c7; }
+    .btn-gps.activo { background: #15803d; }
+    .btn-menu-lateral { background: #57534e; }
+
+    .layer-group { display: flex; gap: 6px; margin-top: 8px; }
+    .btn-capa {
+      flex: 1; background: #292524; color: #d6d3d1; border: 1px solid #44403c;
+      padding: 8px 6px; border-radius: 8px; font-size: 11.5px; font-weight: 600;
+      cursor: pointer; text-align: center; transition: all 0.2s;
+    }
+    .btn-capa.activo {
+      background: #fbbf24; color: #1c1917; border-color: #fbbf24; font-weight: 800;
+    }
+    .opacidad-row {
+      display: flex; align-items: center; gap: 8px; margin-top: 8px;
+      font-size: 11px; color: #a8a29e;
+    }
+    .opacidad-row input { flex: 1; accent-color: #fbbf24; }
+
+    #barra-eras {
+      display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;
+      scrollbar-width: none; pointer-events: auto;
+    }
+    #barra-eras::-webkit-scrollbar { display: none; }
+    .chip-era {
+      padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 800;
+      border: 2px solid rgba(255,255,255,0.25); cursor: pointer; white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.35); transition: transform 0.15s;
+    }
+    .chip-era.activo { border-color: #ffffff; transform: scale(1.06); }
+
+    .marcador-geo {
+      width: 26px; height: 26px; border-radius: 50%;
+      border: 3px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.65);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 900; color: #1c1917; cursor: pointer;
+      transition: transform 0.4s ease, opacity 0.4s ease;
+    }
+
+    .siendo-comido {
+      transform: scale(0) rotate(720deg) !important;
+      opacity: 0;
+    }
+
+    .marcador-ammonite-gps {
+      background: #0284c7; width: 34px; height: 34px; border-radius: 50%;
+      border: 3px solid #ffffff; box-shadow: 0 0 12px rgba(2, 132, 199, 0.9);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; animation: pulsoAmmonite 2s infinite;
+    }
+    @keyframes pulsoAmmonite {
+      0% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.7); }
+      70% { box-shadow: 0 0 0 12px rgba(2, 132, 199, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0); }
+    }
+
+    #menu-lateral {
+      position: fixed; top: 0; right: -280px; width: 260px; height: 100%;
+      background: rgba(28, 25, 23, 0.98); backdrop-filter: blur(10px);
+      z-index: 4000; box-shadow: -5px 0 25px rgba(0,0,0,0.5);
+      color: #fff; padding: 20px; box-sizing: border-box;
+      transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    #menu-lateral.abierto { right: 0; }
+    .menu-header {
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 10px;
+    }
+    .menu-header h3 { margin: 0; font-size: 16px; color: #fbbf24; }
+    .btn-cerrar-menu { background: none; border: none; color: #a8a29e; font-size: 22px; cursor: pointer; }
+    .menu-opcion {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px; font-weight: 600; color: #e7e5e4;
+    }
+    .menu-opcion input[type="checkbox"] { width: 18px; height: 18px; accent-color: #fbbf24; cursor: pointer; }
+
+    #ficha {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 2000;
+      max-height: 82%; overflow-y: auto;
+      background: var(--card-bg); color: var(--text-main);
+      padding: 18px 18px 32px 18px;
+      border-radius: 22px 22px 0 0;
+      box-shadow: 0 -6px 30px rgba(0,0,0,0.5);
+      transform: translateY(105%);
+      transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+      border-top: 4px solid var(--accent);
+    }
+    #ficha.abierta { transform: translateY(0); }
+    .tirador { width: 42px; height: 5px; background: #d6d3d1; border-radius: 3px; margin: -6px auto 12px auto; }
+    #cerrar {
+      float: right; font-size: 24px; line-height: 22px;
+      border: none; background: #e7e5e4; color: #44403c;
+      width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
+    }
+    .badge-edad {
+      display: inline-block; padding: 4px 10px; border-radius: 6px;
+      font-size: 11px; font-weight: 800; text-transform: uppercase;
+      margin-bottom: 6px; border: 1px solid rgba(0,0,0,0.15);
+    }
+    #ficha h2 { margin: 2px 0 6px 0; font-size: 20px; color: #1c1917; padding-right: 36px; }
+    .coords-box {
+      font-family: monospace; font-size: 11.5px; color: var(--text-muted);
+      background: #f5f5f4; padding: 5px 10px; border-radius: 6px;
+      margin-bottom: 12px; display: inline-block; border: 1px solid #e7e5e4;
+    }
+    
+    .grid-datos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .dato-item { background: #f5f5f4; padding: 8px 10px; border-radius: 10px; border-left: 3px solid #78716c; }
+    .dato-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #78716c; margin-bottom: 2px; }
+    .input-editable {
+      width: 100%; box-sizing: border-box; background: transparent; border: none;
+      border-bottom: 1px dashed #a8a29e; font-size: 12.5px; font-weight: 600;
+      color: #1c1917; font-family: inherit; padding: 2px 0; outline: none;
+    }
+    .input-editable:focus { border-bottom: 2px solid var(--accent); background: #ffffff; }
+
+    .seccion-campo { margin-top: 14px; padding-top: 14px; border-top: 1px dashed #d6d3d1; }
+    .seccion-campo h3 { font-size: 13.5px; margin: 0 0 8px 0; color: #44403c; }
+    textarea, .textarea-editable {
+      width: 100%; box-sizing: border-box; min-height: 62px;
+      padding: 10px; border-radius: 8px; border: 1px solid #d6d3d1;
+      font-family: inherit; font-size: 13px; background: #ffffff;
+    }
+    .acciones-campo { display: flex; gap: 8px; margin-top: 10px; }
+    .btn-accion { flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+    .btn-guardar { background: #15803d; color: white; }
+    .btn-foto { background: #b45309; color: white; }
+    
+    .galeria-fotos { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 12px; }
+    .foto-wrapper { position: relative; }
+    .foto-wrapper img { width: 100%; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #d6d3d1; }
+    .btn-borrar-foto {
+      position: absolute; top: 4px; right: 4px; background: rgba(220, 38, 38, 0.9); color: white;
+      border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; cursor: pointer;
+    }
+
+    .botones-flotantes {
+      position: fixed; right: 14px; bottom: 20px; z-index: 1000;
+      display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+    }
+    #btn-nuevo-punto {
+      background: #fbbf24; color: #1c1917; border: none;
+      padding: 12px 16px; border-radius: 30px; font-weight: 800;
+      font-size: 13px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); cursor: pointer;
+    }
+    #btn-nuevo-punto.modo-activo { background: #ef4444; color: white; }
+
+    #btn-modo-dino {
+      background: #16a34a; color: white; border: none;
+      padding: 10px 14px; border-radius: 30px; font-weight: 800;
+      font-size: 12.5px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); cursor: pointer;
+      display: flex; align-items: center; gap: 6px; transition: transform 0.2s;
+    }
+    #btn-modo-dino.activo {
+      background: #dc2626; transform: scale(1.08);
+      animation: pulseDino 1.2s infinite alternate;
+    }
+    @keyframes pulseDino {
+      0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+      100% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
+    }
+
+    .backup-group { display: flex; gap: 6px; margin-top: 8px; }
+    .btn-backup {
+      flex: 1; background: #0284c7; color: #ffffff; border: none;
+      padding: 6px 8px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="topbar">
+    <div class="panel-control">
+      <div class="header-row">
+        <div class="app-title">&#9935; GEOPALEO · IGME</div>
+        <div class="btn-acciones-top">
+          <button id="btn-gps" class="btn-gps" onclick="marcarGPS()">🐚 GPS</button>
+          <button class="btn-menu-lateral" onclick="toggleMenuLateral(true)">⚙️ Menú</button>
+        </div>
+      </div>
+      <div class="layer-group">
+        <button class="btn-capa activo" onclick="cambiarModoMapa('hibrido', this)">Satélite + IGME</button>
+        <button class="btn-capa" onclick="cambiarModoMapa('igme', this)">Solo Geológico</button>
+        <button class="btn-capa" onclick="cambiarModoMapa('satelite', this)">Solo Satélite</button>
+      </div>
+      <div class="opacidad-row" id="control-opacidad">
+        <span>Opacidad IGME:</span>
+        <input type="range" min="0" max="100" value="65" oninput="ajustarOpacidadIGME(this.value)">
+        <span id="val-opacidad">65%</span>
+      </div>
+    </div>
+
+    <div id="barra-eras">
+      <div class="chip-era activo" style="background:#44403c; color:#fff;" onclick="filtrarEra('TODAS', this)">Todas las Eras</div>
+      <div class="chip-era" style="background:#7FA056; color:#fff;" onclick="filtrarEra('Paleozoico', this)">Paleozoico</div>
+      <div class="chip-era" style="background:#34B2C9; color:#1c1917;" onclick="filtrarEra('Jurásico', this)">Jurásico</div>
+      <div class="chip-era" style="background:#7FC64E; color:#1c1917;" onclick="filtrarEra('Cretácico', this)">Cretácico</div>
+      <div class="chip-era" style="background:#FD9A52; color:#1c1917;" onclick="filtrarEra('Paleógeno', this)">Paleógeno</div>
+    </div>
+  </div>
+
+  <div id="menu-lateral">
+    <div class="menu-header">
+      <h3>Opciones Generales</h3>
+      <button class="btn-cerrar-menu" onclick="toggleMenuLateral(false)">×</button>
+    </div>
+    
+    <div class="menu-opcion">
+      <span>Mostrar Yacimientos Base (IGME)</span>
+      <input type="checkbox" id="chk-base" checked onclick="toggleCapasVisibles()">
+    </div>
+    
+    <div class="menu-opcion">
+      <span>Mostrar Afloramientos Nuevos</span>
+      <input type="checkbox" id="chk-nuevos" checked onclick="toggleCapasVisibles()">
+    </div>
+
+    <div style="border-top: 1px solid rgba(255,255,255,0.15); padding-top: 10px; margin-top: 5px;">
+      <span style="font-size: 11px; color: #a8a29e; display:block; margin-bottom: 6px;">Copia de Seguridad (Backup)</span>
+      <div class="backup-group">
+        <button class="btn-backup" onclick="exportarBackup()">💾 Exportar</button>
+        <button class="btn-backup" onclick="document.getElementById('input-import').click()">📂 Importar</button>
+        <input type="file" id="input-import" accept=".json,.txt" style="display:none" onchange="importarBackup(event)">
+      </div>
+    </div>
+  </div>
+
+  <div id="mapa"></div>
+
+  <div class="botones-flotantes">
+    <button id="btn-modo-dino" onclick="toggleModoDino()">🦖 Modo T-Rex</button>
+    <button id="btn-nuevo-punto" onclick="alternarModoNuevoPunto()">+ Añadir Afloramiento</button>
+  </div>
+
+  <div id="ficha">
+    <div class="tirador"></div>
+    <button id="cerrar" onclick="cerrarFicha()">×</button>
+    <div id="ficha-edad" class="badge-edad">Jurásico</div>
+    <h2 id="ficha-titulo">Yacimiento</h2>
+    <div id="ficha-coords" class="coords-box">Lat: 0.0000 | Lon: 0.0000</div>
+
+    <div class="grid-datos">
+      <div class="dato-item">
+        <div class="dato-label">Litología / Facies</div>
+        <input type="text" id="edit-litologia" class="input-editable">
+      </div>
+      <div class="dato-item">
+        <div class="dato-label">Fósiles / Icnofósiles</div>
+        <input type="text" id="edit-fosiles" class="input-editable">
+      </div>
+      <div class="dato-item">
+        <div class="dato-label">Paleoambiente</div>
+        <input type="text" id="edit-ambiente" class="input-editable">
+      </div>
+      <div class="dato-item">
+        <div class="dato-label">Hoja MAGNA 1:50k</div>
+        <input type="text" id="edit-magna" class="input-editable">
+      </div>
+    </div>
+
+    <div style="margin-bottom: 12px;">
+      <div class="dato-label" style="margin-bottom: 2px;">Descripción general</div>
+      <textarea id="edit-desc" class="textarea-editable" style="min-height: 50px;"></textarea>
+    </div>
+
+    <div class="seccion-campo" style="margin-top: 10px; padding-top: 10px;">
+      <h3>Observaciones de campo y fotos</h3>
+      <textarea id="campo-notas" placeholder="Anota buzamiento, estructuras sedimentarias o tafonomía..."></textarea>
+      
+      <div class="acciones-campo">
+        <button class="btn-accion btn-guardar" onclick="guardarCambiosYacimiento()">💾 Guardar Cambios</button>
+        <button class="btn-accion btn-foto" onclick="document.getElementById('input-camara').click()">📷 Adjuntar Fotos</button>
+        <input type="file" id="input-camara" accept="image/*" multiple style="display:none" onchange="procesarFotoCampo(event)">
+      </div>
+
+      <div id="galeria-yacimiento" class="galeria-fotos"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const COLORES_ICS = {
+      'Paleozoico': '#7FA056',
+      'Jurásico': '#34B2C9',
+      'Cretácico': '#7FC64E',
+      'Paleógeno': '#FD9A52'
+    };
+
+    const YACIMIENTOS_BASE_ORIGINALES = [
+      {
+        id: 'belchite',
+        nombre: 'Belchite — Secciones Jurásicas (Rama Aragonesa)',
+        era: 'Jurásico',
+        edadDetalle: 'Toarciense - Bajociense',
+        lat: 41.3005, lon: -0.7542,
+        litologia: 'Calizas bioclásticas, margas y niveles de oolitos ferruginosos',
+        fosiles: 'Ammonites (Hildoceras, Dactylioceras), Belemnites y Braquiópodos',
+        ambiente: 'Plataforma marina abierta carbonatada de rampa media',
+        magna: 'Hoja 412 / 439',
+        desc: 'Afloramiento clásico de la Cordillera Ibérica con niveles condensados (hardgrounds) y excelente exposición de ammonoideos in situ.'
+      },
+      {
+        id: 'moneva',
+        nombre: 'Moneva — Barrancos del Río Aguasvivas',
+        era: 'Jurásico',
+        edadDetalle: 'Calloviense - Oxfordiense',
+        lat: 41.1278, lon: -0.8256,
+        litologia: 'Calizas esponjiolíticas y ritmitas margocalcáreas',
+        fosiles: 'Ammonites perisfínctidos, esponjas silíceas y equinodermos',
+        ambiente: 'Rampa carbonatada distal con biohermos de esponjas',
+        magna: 'Hoja 466 (Moyuela)',
+        desc: 'Sucesión estratigráfica rítmica muy bien expuesta con abundante fauna bentónica y cefalópodos.'
+      },
+      {
+        id: 'castellgali',
+        nombre: 'Castellgalí — Margas Eocenas de la Cuenca del Ebro',
+        era: 'Paleógeno',
+        edadDetalle: 'Eoceno Medio (Luteciense - Bartoniense)',
+        lat: 41.6761, lon: 1.8385,
+        litologia: 'Margas azuladas marinas, areniscas calcáreas y niveles bioclásticos',
+        fosiles: 'Nummulites, Equínidos irregulares, Bivalvos y Briozoos',
+        ambiente: 'Plataforma marina somera y prodelta',
+        magna: 'Hoja 363 (Manresa)',
+        desc: 'Taludes margosos fosilíferos ideales para fotografía macro de macroforaminíferos y equinodermos.'
+      },
+      {
+        id: 'castelloli',
+        nombre: 'Castellolí — Complejos Deltaicos y Arrecifales',
+        era: 'Paleógeno',
+        edadDetalle: 'Eoceno Medio (Bartoniense)',
+        lat: 41.5975, lon: 1.7003,
+        litologia: 'Areniscas con estratificación cruzada, conglomerados y calizas coralinas',
+        fosiles: 'Corales coloniales, Equinodermos e icnofósiles (Skolithos / Thalassinoides)',
+        ambiente: 'Frente deltaico y parches arrecifales costeros',
+        magna: 'Hoja 391 (Igualada)',
+        desc: 'Excelente punto para observar el paso lateral entre facies detríticas y construcciones arrecifales.'
+      },
+      {
+        id: 'busot',
+        nombre: 'Busot — Cabeçó d’Or y Series Prebéticas',
+        era: 'Cretácico',
+        edadDetalle: 'Jurásico Sup. - Cretácico Inf. (Valanginiense)',
+        lat: 38.4839, lon: -0.4189,
+        litologia: 'Calizas micríticas, margocalizas pelágicas y niveles arrecifales',
+        fosiles: 'Ammonites, Equínidos (Toxaster), Braquiópodos y Rudistas',
+        ambiente: 'Talud y cuenca hemipelágica del dominio Prebético',
+        magna: 'Hoja 847 (Villajoyosa)',
+        desc: 'Secciones clásicas de la provincia de Alicante para documentar el tránsito Jurásico-Cretácico y su tectónica alpina.'
+      },
+      {
+        id: 'zudaire',
+        nombre: 'Zudaire — Escarpe de la Sierra de Urbasa',
+        era: 'Cretácico',
+        edadDetalle: 'Campaniense - Maastrichtiense',
+        lat: 42.7758, lon: -2.1283,
+        litologia: 'Margas grises y calizas bioclásticas de plataforma externa',
+        fosiles: 'Equínidos irregulares (Micraster, Echinocorys) e Inocerámidos',
+        ambiente: 'Plataforma externa subpirenaica (Cuenca Vasco-Cantábrica)',
+        magna: 'Hoja 140 (Estella)',
+        desc: 'Afloramientos margosos muy ricos en equinodermos del Cretácico Superior bajo los paredones kársticos de Urbasa.'
+      },
+      {
+        id: 'turbon',
+        nombre: 'Las Vilas del Turbón — Margas de Aguas Salenz',
+        era: 'Cretácico',
+        edadDetalle: 'Santoniense - Campaniense',
+        lat: 42.4162, lon: 0.5055,
+        litologia: 'Margas azules y calizas nodulosas pirenaicas',
+        fosiles: 'Equinodermos (Micraster), Braquiópodos y Bivalvos',
+        ambiente: 'Cuenca marina circalitoral pirenaica',
+        magna: 'Hoja 213 (Pont de Suert)',
+        desc: 'Enclave de alta montaña en el macizo del Turbón con barrancos margosos de gran interés paleontológico y estructural.'
+      },
+      {
+        id: 'monsagro',
+        nombre: 'Monsagro / Peña de Francia — Cuarcita Armoricana',
+        era: 'Paleozoico',
+        edadDetalle: 'Ordovícico Inferior (Floiense / Arenig)',
+        lat: 40.5036, lon: -6.2719,
+        litologia: 'Cuarcitas blancas recristalizadas con ripples de oleaje',
+        fosiles: 'Icnofósiles: Cruziana (huellas de trilobites), Rusophycus y Skolithos',
+        ambiente: 'Plataforma marina siliciclástica somera perigondwá
