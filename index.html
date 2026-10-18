@@ -4,438 +4,257 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#1e1b18">
-  <title>GEOPALEO PRO — Cartografía e Invertebrados IGME / PBDB</title>
+  <title>GEOPALEO PRO — Radar de Invertebrados</title>
   
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    :root {
-      --bg-dark: #1e1b18; --card-bg: #fdfbf7; --accent: #b45309; --text-main: #292524; --text-muted: #57534e;
-    }
+    :root { --bg-dark: #1e1b18; --card-bg: #fdfbf7; --accent: #b45309; --text-main: #292524; }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html, body {
-      margin: 0; padding: 0; height: 100%; width: 100%;
-      font-family: system-ui, -apple-system, sans-serif;
-      background: var(--bg-dark); overflow: hidden;
-    }
-    #mapa { position: absolute; top: 0; bottom: 0; left: 0; right: 0; width: 100%; height: 100%; z-index: 1; }
+    html, body { margin: 0; padding: 0; height: 100%; width: 100%; font-family: system-ui, sans-serif; background: var(--bg-dark); overflow: hidden; }
+    #mapa { position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: 1; }
 
-    /* Barra Superior */
+    /* UI Superior */
     #topbar { position: fixed; top: 8px; left: 8px; right: 8px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
-    .panel-control { background: rgba(28, 25, 23, 0.95); backdrop-filter: blur(10px); color: #f5f5f4; padding: 10px 12px; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.55); pointer-events: auto; border: 1px solid rgba(255,255,255,0.12); }
-    .header-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-    .app-title { font-weight: 800; font-size: 12.5px; letter-spacing: 0.3px; color: #fbbf24; display: flex; align-items: center; gap: 5px; }
-    .btn-acciones-top { display: flex; gap: 5px; }
-    .btn-top { color: #fff; border: none; padding: 6px 9px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 4px; transition: all 0.2s; }
-    .btn-gps { background: #0284c7; } .btn-gps.buscando { background: #d97706; animation: parpadeo 1s infinite alternate; } .btn-gps.activo { background: #15803d; box-shadow: 0 0 10px rgba(21, 128, 61, 0.7); }
-    .btn-pbdb-top { background: #7c3aed; } .btn-pbdb-top.activo { background: #a855f7; box-shadow: 0 0 10px rgba(168, 85, 247, 0.8); border: 1px solid #fff; }
-    .btn-menu-lateral { background: #57534e; }
+    .panel-control { background: rgba(28, 25, 23, 0.95); backdrop-filter: blur(10px); color: #f5f5f4; padding: 10px 12px; border-radius: 14px; pointer-events: auto; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
+    .header-row { display: flex; justify-content: space-between; align-items: center; }
+    .app-title { font-weight: 800; font-size: 13px; color: #fbbf24; }
+    .btn-menu-lateral { background: #57534e; color: #fff; border: none; padding: 6px 10px; border-radius: 8px; font-weight: 800; cursor: pointer; }
 
-    @keyframes parpadeo { from { opacity: 1; } to { opacity: 0.5; } }
+    /* Botón Radar / Escaneo */
+    .btn-radar-zona { background: #7c3aed; color: #fff; border: 2px solid #a855f7; width: 100%; padding: 10px; border-radius: 10px; font-size: 13.5px; font-weight: 900; margin-top: 8px; cursor: pointer; box-shadow: 0 4px 10px rgba(124, 58, 237, 0.4); transition: transform 0.1s; }
+    .btn-radar-zona:active { transform: scale(0.98); }
+    
+    .layer-group { display: flex; gap: 5px; margin-top: 8px; }
+    .btn-capa { flex: 1; background: #292524; color: #d6d3d1; border: 1px solid #44403c; padding: 7px 4px; border-radius: 8px; font-size: 11px; font-weight: 600; }
+    .btn-capa.activo { background: #fbbf24; color: #1c1917; font-weight: 800; }
 
-    /* Buscador */
-    .buscador-row { display: flex; gap: 6px; margin-top: 7px; position: relative; }
-    .buscador-input { flex: 1; background: #292524; color: #fff; border: 1px solid #57534e; padding: 6px 10px; border-radius: 8px; font-size: 12px; outline: none; }
-    .buscador-input:focus { border-color: #fbbf24; }
-    .btn-buscar { background: #fbbf24; color: #1c1917; border: none; padding: 0 12px; border-radius: 8px; font-weight: 800; font-size: 13px; cursor: pointer; }
-    #resultados-busqueda { position: absolute; top: 36px; left: 0; right: 0; background: #292524; border: 1px solid #57534e; border-radius: 10px; max-height: 210px; overflow-y: auto; z-index: 3000; display: none; box-shadow: 0 8px 25px rgba(0,0,0,0.7); }
-    .item-resultado { padding: 9px 12px; border-bottom: 1px solid #44403c; font-size: 12px; color: #f5f5f4; cursor: pointer; line-height: 1.3; }
-
-    /* Selector Capas */
-    .layer-group { display: flex; gap: 5px; margin-top: 7px; }
-    .btn-capa { flex: 1; background: #292524; color: #d6d3d1; border: 1px solid #44403c; padding: 6px 4px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; text-align: center; }
-    .btn-capa.activo { background: #fbbf24; color: #1c1917; border-color: #fbbf24; font-weight: 800; }
-    .opacidad-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 10.5px; color: #d6d3d1; }
-    .opacidad-row input { flex: 1; accent-color: #fbbf24; cursor: pointer; height: 4px; }
-    .aviso-zoom { font-size: 10px; color: #fbbf24; text-align: center; margin-top: 4px; font-weight: 600; }
-
-    /* Chips Eras */
-    #barra-eras { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 3px; scrollbar-width: none; pointer-events: auto; }
-    #barra-eras::-webkit-scrollbar { display: none; }
-    .chip-era { padding: 5px 10px; border-radius: 20px; font-size: 10.5px; font-weight: 800; border: 2px solid rgba(255,255,255,0.25); cursor: pointer; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
-    .chip-era.activo { border-color: #ffffff; transform: scale(1.06); }
+    /* Mirilla Central */
+    .mirilla-central { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2000; width: 50px; height: 50px; pointer-events: none; border: 2px dashed rgba(251, 191, 36, 0.6); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .mirilla-central::after { content: ''; width: 6px; height: 6px; background: #fbbf24; border-radius: 50%; }
+    .radio-texto { position: absolute; bottom: -20px; color: #fbbf24; font-size: 10px; font-weight: bold; background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
 
     /* Marcadores */
-    .marcador-geo { width: 28px; height: 28px; border-radius: 50%; border: 2.5px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; color: #1c1917; cursor: pointer; }
-    .marcador-historico { width: 30px; height: 30px; border-radius: 8px; border: 2px solid #fef08a; box-shadow: 0 2px 10px rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; font-size: 14px; background: #9a3412; color: #fff; cursor: pointer; }
-    .marcador-pbdb { width: 26px; height: 26px; border-radius: 50%; background: rgba(124, 58, 237, 0.92); border: 2px solid #ffffff; box-shadow: 0 2px 8px rgba(124, 58, 237, 0.7); display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff; cursor: pointer; }
-    .marcador-ammonite-gps { width: 38px; height: 38px; border-radius: 50%; background: #0284c7; border: 2.5px solid #ffffff; box-shadow: 0 0 14px rgba(2, 132, 199, 0.95); display: flex; align-items: center; justify-content: center; animation: pulsoAmmonite 2s infinite; }
-    @keyframes pulsoAmmonite { 0% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.8); } 70% { box-shadow: 0 0 0 14px rgba(2, 132, 199, 0); } 100% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0); } }
+    .marcador-historico { width: 32px; height: 32px; border-radius: 8px; border: 2px solid #fef08a; display: flex; align-items: center; justify-content: center; font-size: 16px; background: #9a3412; color: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.8); }
+    .marcador-pbdb { width: 30px; height: 30px; border-radius: 50%; background: #6d28d9; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; box-shadow: 0 2px 10px rgba(109, 40, 217, 0.8); }
 
-    /* Menú y Botones Flotantes */
-    #menu-lateral { position: fixed; top: 0; right: -300px; width: 280px; height: 100%; background: rgba(28, 25, 23, 0.98); z-index: 4000; box-shadow: -5px 0 25px rgba(0,0,0,0.6); color: #fff; padding: 18px; overflow-y: auto; transition: right 0.3s; display: flex; flex-direction: column; gap: 13px; }
+    /* Menú Lateral */
+    #menu-lateral { position: fixed; top: 0; right: -300px; width: 280px; height: 100%; background: rgba(28, 25, 23, 0.98); z-index: 4000; padding: 18px; color: #fff; transition: right 0.3s; display: flex; flex-direction: column; gap: 12px; border-left: 1px solid #44403c; }
     #menu-lateral.abierto { right: 0; }
-    .menu-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 8px; }
-    .menu-opcion { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; font-weight: 600; padding: 4px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); }
-    .menu-opcion input[type="checkbox"] { width: 18px; height: 18px; accent-color: #fbbf24; cursor: pointer; }
-    .botones-flotantes { position: fixed; right: 12px; bottom: 18px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
-    .btn-flotante { border: none; padding: 10px 14px; border-radius: 30px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.55); cursor: pointer; display: flex; align-items: center; gap: 6px; }
-    #btn-expedicion { background: #2563eb; color: #fff; } #btn-expedicion.activo { background: #ea580c; animation: pulseExp 1.4s infinite alternate; }
-    #btn-area-abundancia { background: #059669; color: #fff; } #btn-area-abundancia.modo-activo { background: #dc2626; }
-    #btn-modo-dino { background: #4d7c0f; color: #fff; } #btn-modo-dino.activo { background: #dc2626; }
-    #btn-nuevo-punto { background: #fbbf24; color: #1c1917; } #btn-nuevo-punto.modo-activo { background: #dc2626; color: #fff; }
-    @keyframes pulseExp { 0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7); } 100% { box-shadow: 0 0 0 10px transparent; } }
+    .menu-opcion { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; padding-bottom: 8px; border-bottom: 1px solid #44403c; }
+    .menu-opcion input { width: 18px; height: 18px; accent-color: #fbbf24; }
 
-    #banner-expedicion { position: fixed; bottom: 18px; left: 12px; z-index: 1000; background: rgba(28, 25, 23, 0.94); border: 1.5px solid #ea580c; color: #fff; padding: 8px 12px; border-radius: 12px; font-size: 11.5px; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+    /* Popups Leaflet Custom */
+    .leaflet-popup-content-wrapper { background: #1c1917; color: #f5f5f4; border: 1px solid #57534e; border-radius: 12px; }
+    .leaflet-popup-tip { background: #1c1917; }
+    .popup-titulo { font-size: 13px; font-weight: 800; color: #fbbf24; margin-bottom: 4px; border-bottom: 1px solid #44403c; padding-bottom: 4px; }
+    .popup-datos { font-size: 11.5px; line-height: 1.4; color: #d6d3d1; max-height: 180px; overflow-y: auto; padding-right: 4px; }
+    .taxa-lista { background: #292524; padding: 6px; border-radius: 6px; margin-top: 6px; font-style: italic; color: #a78bfa; border: 1px solid #44403c; }
 
-    /* Fichas y Modales */
-    #ficha { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2000; max-height: 85%; overflow-y: auto; background: var(--card-bg); padding: 18px; border-radius: 22px 22px 0 0; transform: translateY(105%); transition: transform 0.32s; border-top: 4px solid var(--accent); }
-    #ficha.abierta { transform: translateY(0); box-shadow: 0 -6px 30px rgba(0,0,0,0.55); }
-    .tirador { width: 42px; height: 5px; background: #d6d3d1; border-radius: 3px; margin: -6px auto 12px auto; }
-    .badge-edad { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; border: 1px solid rgba(0,0,0,0.15); }
-    .coords-box { font-family: monospace; font-size: 11px; background: #f5f5f4; padding: 5px 10px; border-radius: 6px; margin-bottom: 12px; display: inline-block; border: 1px solid #e7e5e4; }
-    .grid-datos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-    .dato-item { background: #f5f5f4; padding: 8px 10px; border-radius: 10px; border-left: 3px solid #78716c; }
-    .dato-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #78716c; margin-bottom: 2px; }
-    .input-editable { width: 100%; background: transparent; border: none; border-bottom: 1px dashed #a8a29e; font-size: 12.5px; font-weight: 600; outline: none; }
-    .brujula-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 8px 10px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .btn-medir-estrato { background: #2563eb; color: #fff; border: none; padding: 7px 11px; border-radius: 8px; font-size: 11.5px; font-weight: 800; cursor: pointer; }
-    .seccion-campo { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #d6d3d1; }
-    textarea, .textarea-editable { width: 100%; min-height: 60px; padding: 9px; border-radius: 8px; border: 1px solid #d6d3d1; font-family: inherit; font-size: 12.5px; }
-    .acciones-campo { display: flex; gap: 8px; margin-top: 10px; }
-    .btn-accion { flex: 1; padding: 11px; border-radius: 8px; border: none; font-weight: 700; font-size: 12.5px; cursor: pointer; }
-    .btn-guardar { background: #15803d; color: white; } .btn-foto { background: #b45309; color: white; }
-    .galeria-fotos { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 8px; margin-top: 12px; }
-    .foto-wrapper { position: relative; } .foto-wrapper img { width: 100%; height: 85px; object-fit: cover; border-radius: 8px; cursor: pointer; }
-    .btn-borrar-foto { position: absolute; top: 4px; right: 4px; background: rgba(220,38,38,0.9); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; }
-
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); z-index: 5000; display: none; align-items: center; justify-content: center; padding: 14px; }
-    .modal-overlay.visible { display: flex; }
-    .modal-caja { background: var(--card-bg); width: 100%; max-width: 390px; border-radius: 18px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.65); border-top: 5px solid #fbbf24; max-height: 90vh; overflow-y: auto; }
-    .campo-form { margin-bottom: 9px; } .campo-form label { display: block; font-size: 10.5px; font-weight: 700; color: #57534e; margin-bottom: 3px; text-transform: uppercase; }
-    .campo-form input, .campo-form select { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #d6d3d1; font-size: 13px; }
-    .modal-botones { display: flex; gap: 8px; margin-top: 14px; }
-    .modal-botones button { flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: 800; cursor: pointer; font-size: 12.5px; }
-    .btn-cancelar-modal { background: #e7e5e4; color: #44403c; } .btn-confirmar-modal { background: #15803d; color: #fff; }
   </style>
 </head>
 <body>
-  <!-- DETECTOR DE ERRORES GLOBAL -->
-  <script>
-    window.onerror = function(msg, url, line) {
-      alert("¡Aviso de seguridad!\nHubo un pequeño error que paró el mapa.\nLínea: " + line + "\nError: " + msg);
-      return false;
-    };
-  </script>
 
   <div id="topbar">
     <div class="panel-control">
       <div class="header-row">
         <div class="app-title">&#9935; GEOPALEO PRO</div>
-        <div class="btn-acciones-top">
-          <button id="btn-gps" class="btn-top btn-gps" onclick="toggleGPS()"><span>🐚</span> <span id="txt-gps">GPS</span></button>
-          <button id="btn-pbdb-top" class="btn-top btn-pbdb-top" onclick="togglePBDBRapido()"><span>🔬</span> <span id="txt-pbdb">PBDB</span></button>
-          <button class="btn-top btn-menu-lateral" onclick="toggleMenuLateral(true)">⚙️ Capas</button>
-        </div>
+        <button class="btn-menu-lateral" onclick="document.getElementById('menu-lateral').classList.add('abierto')">⚙️ Filtros Activos</button>
       </div>
-      <div class="buscador-row">
-        <input type="text" id="input-buscador" class="buscador-input" placeholder="Buscar pueblo, sierra..." onkeydown="if(event.key==='Enter') buscarLocalidad()">
-        <button class="btn-buscar" onclick="buscarLocalidad()">🔍</button>
-        <div id="resultados-busqueda"></div>
-      </div>
+      
+      <button class="btn-radar-zona" onclick="escanearAreaCentral()">📡 Escanear Área Visual (100 km²)</button>
+
       <div class="layer-group">
         <button class="btn-capa activo" onclick="cambiarModoMapa('hibrido', this)">Satélite + MAGNA</button>
         <button class="btn-capa" onclick="cambiarModoMapa('igme', this)">Solo MAGNA</button>
-        <button class="btn-capa" onclick="cambiarModoMapa('satelite', this)">Solo Satélite</button>
       </div>
-      <div class="opacidad-row" id="control-opacidad">
-        <span>Opacidad IGME:</span>
-        <input type="range" min="0" max="100" value="75" oninput="ajustarOpacidadIGME(this.value)">
-        <span id="val-opacidad">75%</span>
-      </div>
-      <div id="aviso-zoom-magna" class="aviso-zoom">🔍 Haz 3 toques rápidos en el mapa para detectar el PISO GEOLÓGICO</div>
-    </div>
-    <div id="barra-eras">
-      <div class="chip-era activo" style="background:#44403c; color:#fff;" onclick="filtrarEra('TODAS', this)">Todas</div>
-      <div class="chip-era" style="background:#7FA056; color:#fff;" onclick="filtrarEra('Paleozoico', this)">Paleozoico</div>
-      <div class="chip-era" style="background:#994C99; color:#fff;" onclick="filtrarEra('Triásico', this)">Triásico</div>
-      <div class="chip-era" style="background:#34B2C9; color:#1c1917;" onclick="filtrarEra('Jurásico', this)">Jurásico</div>
-      <div class="chip-era" style="background:#7FC64E; color:#1c1917;" onclick="filtrarEra('Cretácico', this)">Cretácico</div>
-      <div class="chip-era" style="background:#FD9A52; color:#1c1917;" onclick="filtrarEra('Paleógeno', this)">Paleógeno</div>
+      <div style="font-size:10px; color:#a8a29e; text-align:center; margin-top:6px;">Mueve el mapa y pulsa Escanear para cargar datos sin petar la app.</div>
     </div>
   </div>
 
+  <div class="mirilla-central">
+    <div class="radio-texto">Área 5km</div>
+  </div>
+
   <div id="menu-lateral">
-    <div class="menu-header">
-      <h3>Capas y Registros</h3>
-      <button class="btn-cerrar-menu" onclick="toggleMenuLateral(false)">×</button>
+    <div style="display:flex; justify-content:space-between;">
+      <h3 style="margin:0; color:#fbbf24;">Capas a Escanear</h3>
+      <button onclick="document.getElementById('menu-lateral').classList.remove('abierto')" style="background:none; border:none; color:#fff; font-size:24px;">×</button>
     </div>
-    <div class="menu-opcion"><span>📍 Yacimientos Base IGME</span><input type="checkbox" id="chk-base" checked onchange="renderizarTodo()"></div>
-    <div class="menu-opcion"><span>🏛️ Clásicos (Vilanova)</span><input type="checkbox" id="chk-historicos" checked onchange="renderizarTodo()"></div>
-    <div class="menu-opcion"><span>⭐ Mis Afloramientos</span><input type="checkbox" id="chk-nuevos" checked onchange="renderizarTodo()"></div>
-    <div class="menu-opcion" style="color:#4ade80;"><span>🟢 Áreas de Abundancia</span><input type="checkbox" id="chk-areas" checked onchange="renderizarTodo()"></div>
-    <div class="menu-opcion" style="color:#c084fc;"><span>🔬 Estudios PBDB</span><input type="checkbox" id="chk-pbdb" onchange="sincronizarPBDB(this.checked)"></div>
-    <div style="margin-top:10px;"><button style="width:100%; padding:10px; background:#0284c7; color:white; border-radius:8px; border:none; font-weight:bold;" onclick="exportarBackup()">💾 Exportar Copia (JSON)</button></div>
+    
+    <div class="menu-opcion">
+      <span>🏛️ Clásicos (Vilanova, Prado, etc.)</span>
+      <input type="checkbox" id="chk-clasicos" checked>
+    </div>
+    <div class="menu-opcion" style="color:#a78bfa;">
+      <span>🔬 Estudios PBDB (Invertebrados)</span>
+      <input type="checkbox" id="chk-pbdb" checked>
+    </div>
+    <div class="menu-opcion" style="color:#4ade80;">
+      <span>📍 Mis Afloramientos</span>
+      <input type="checkbox" id="chk-mios" checked>
+    </div>
+    <p style="font-size:11px; color:#a8a29e; line-height:1.4;">Solo se cargarán en el mapa los puntos de las capas marcadas que estén dentro del radio de la mirilla central cuando pulses el botón de escaneo.</p>
   </div>
 
   <div id="mapa"></div>
 
-  <div id="banner-expedicion"><b>🥾 EXPEDICIÓN ACTIVA</b><br><span id="info-expedicion">Coche marcado 🚗 · Distancia: 0.00 km</span></div>
-
-  <div class="botones-flotantes">
-    <button id="btn-expedicion" class="btn-flotante" onclick="toggleExpedicion()">🥾 Iniciar Expedición</button>
-    <button id="btn-area-abundancia" class="btn-flotante" onclick="alternarModoNuevaArea()">🟢 Marcar Área</button>
-    <button id="btn-modo-dino" class="btn-flotante" onclick="toggleModoDino()">🦖 Modo T-Rex</button>
-    <button id="btn-nuevo-punto" class="btn-flotante" onclick="alternarModoNuevoPunto()">+ Añadir Afloramiento</button>
-  </div>
-
-  <div id="modal-nuevo" class="modal-overlay">
-    <div class="modal-caja">
-      <h3>📍 Registrar Afloramiento</h3>
-      <div class="campo-form"><label>Nombre</label><input type="text" id="nuevo-nombre" placeholder="Ej: Barranco de la Hoz"></div>
-      <div class="campo-form">
-        <label>Era</label>
-        <select id="nuevo-era"><option value="Paleozoico">Paleozoico</option><option value="Triásico">Triásico</option><option value="Jurásico" selected>Jurásico</option><option value="Cretácico">Cretácico</option><option value="Paleógeno">Paleógeno</option></select>
-      </div>
-      <div class="campo-form"><label>Piso Geológico</label><input type="text" id="nuevo-edad" placeholder="Ej: Calloviense"></div>
-      <div class="campo-form">
-        <label>Buzamiento</label>
-        <div style="display:flex; gap:6px;"><input type="text" id="nuevo-buzamiento" placeholder="Dir 142° / Buz 28°"><button class="btn-medir-estrato" onclick="medirEstratoConSensores('nuevo-buzamiento')">🧭 Medir</button></div>
-      </div>
-      <div class="campo-form"><label>Litología</label><input type="text" id="nuevo-lito"></div>
-      <div class="campo-form"><label>Fauna</label><input type="text" id="nuevo-fosiles"></div>
-      <div class="modal-botones"><button class="btn-cancelar-modal" onclick="cerrarModalNuevo()">Cancelar</button><button class="btn-confirmar-modal" onclick="confirmarNuevoPunto()">Guardar</button></div>
-    </div>
-  </div>
-
-  <div id="modal-area" class="modal-overlay">
-    <div class="modal-caja" style="border-top-color: #10b981;">
-      <h3>🟢 Nueva Área de Abundancia</h3>
-      <div class="campo-form"><label>Nombre del sector</label><input type="text" id="area-nombre"></div>
-      <div class="campo-form"><label>Riqueza</label><select id="area-color"><option value="#16a34a">🟢 Alta</option><option value="#eab308">🟡 Media</option><option value="#dc2626">🔴 Baja / Estéril</option></select></div>
-      <div class="campo-form"><label>Radio (metros)</label><input type="number" id="area-radio" value="120"></div>
-      <div class="campo-form"><label>Notas / Fauna</label><input type="text" id="area-notas"></div>
-      <div class="modal-botones"><button class="btn-cancelar-modal" onclick="cerrarModalArea()">Cancelar</button><button class="btn-confirmar-modal" onclick="confirmarNuevaArea()">Dibujar Área</button></div>
-    </div>
-  </div>
-
-  <div id="ficha">
-    <div class="tirador"></div>
-    <button id="cerrar" onclick="cerrarFicha()">×</button>
-    <div id="ficha-edad" class="badge-edad">Jurásico</div>
-    <h2 id="ficha-titulo">Yacimiento</h2>
-    <div id="ficha-coords" class="coords-box">Lat: 0 | Lon: 0</div>
-    <div class="brujula-box">
-      <div style="flex:1;"><div class="dato-label" style="color:#1d4ed8;">📐 Buzamiento</div><input type="text" id="edit-buzamiento" class="input-editable"></div>
-      <button class="btn-medir-estrato" onclick="medirEstratoConSensores('edit-buzamiento')">🧭 Medir</button>
-    </div>
-    <div class="grid-datos">
-      <div class="dato-item"><div class="dato-label">Litología</div><input type="text" id="edit-litologia" class="input-editable"></div>
-      <div class="dato-item"><div class="dato-label">Fósiles</div><input type="text" id="edit-fosiles" class="input-editable"></div>
-      <div class="dato-item"><div class="dato-label">Ambiente</div><input type="text" id="edit-ambiente" class="input-editable"></div>
-      <div class="dato-item"><div class="dato-label">MAGNA</div><input type="text" id="edit-magna" class="input-editable"></div>
-    </div>
-    <div style="margin-bottom: 12px;"><div class="dato-label">Descripción</div><textarea id="edit-desc" class="textarea-editable"></textarea></div>
-    <div class="seccion-campo">
-      <h3>Notas y fotografías</h3>
-      <textarea id="campo-notas"></textarea>
-      <div class="acciones-campo"><button class="btn-accion btn-guardar" onclick="guardarCambiosYacimiento()">💾 Guardar</button><button class="btn-accion btn-foto" onclick="document.getElementById('input-camara').click()">📷 Foto</button><input type="file" id="input-camara" accept="image/*" multiple style="display:none" onchange="procesarFotoCampo(event)"></div>
-      <div id="galeria-yacimiento" class="galeria-fotos"></div>
-    </div>
-  </div>
-
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // 1. SISTEMA DE SEGURIDAD PARA MEMORIA CORRUPTA
-    function safeParse(key) {
-      try { return JSON.parse(localStorage.getItem(key) || '[]'); } 
-      catch(e) { console.error("Memoria limpiada por error", e); return []; }
-    }
-
-    const COLORES_ICS = { 'Paleozoico': '#7FA056', 'Triásico': '#994C99', 'Jurásico': '#34B2C9', 'Cretácico': '#7FC64E', 'Paleógeno': '#FD9A52' };
-    const SVG_AMMONITE = `<svg viewBox="0 0 64 64" width="24" height="24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"><path d="M32 32 C32 26, 38 24, 40 28 C43 34, 36 42, 28 40 C18 37, 16 24, 24 16 C34 6, 50 12, 52 28 C54 46, 36 58, 18 50 C6 44, 6 24, 16 12" /><path d="M40 28 L46 24 M34 40 L36 47 M22 34 L15 36 M22 20 L16 15 M36 14 L39 7 M49 22 L56 20 M48 38 L55 42" stroke-width="2.5"/></svg>`;
-    const PISOS_GEOLOGICOS = ['Hettangiense', 'Sinemuriense', 'Pliensbachiense', 'Toarciense', 'Aaleniense', 'Bajociense', 'Bathoniense', 'Calloviense', 'Oxfordiense', 'Kimmeridgiense', 'Titónico', 'Aptiense', 'Albiense', 'Cenomaniense'];
-
-    const YACIMIENTOS_BASE_ORIGINALES = [
-      { id: 'belchite', nombre: 'Belchite — Secciones Jurásicas', era: 'Jurásico', edadDetalle: 'Toarciense', lat: 41.3005, lon: -0.7542, litologia: 'Calizas bioclásticas', fosiles: 'Ammonites', ambiente: 'Plataforma', magna: 'Hoja 412', desc: 'Clásico IGME' }
+    // BASE DE DATOS AMPLIADA: Clásicos Paleontológicos Españoles (Invertebrados)
+    const YACIMIENTOS_HISTORICOS = [
+      // Jurásico Ibérico
+      { lat: 40.4265, lon: -1.7120, nombre: "Muela de San Juan / Griegos", autor: "Vilanova y Piera (1863)", edad: "Toarciense-Bajociense", fauna: "Braquiópodos (Terebratula, Rhynchonella), Ammonites (Hildoceras, Stephanoceras)." },
+      { lat: 40.4085, lon: -1.4425, nombre: "Sierra de Albarracín", autor: "Vilanova / Goy", edad: "Toarciense", fauna: "Ammonites (Grammoceras, Porpoceras), Bivalvos (Pholadomya)." },
+      { lat: 41.1278, lon: -0.8256, nombre: "Río Aguasvivas / Moneva", autor: "Seidel / IGME", edad: "Calloviense-Oxfordiense", fauna: "Esponjas, Ammonites (Macrocephalites), Equinodermos." },
+      { lat: 41.3005, lon: -0.7542, nombre: "Belchite", autor: "Fallot / IGME", edad: "Bajociense", fauna: "Oolitos ferruginosos con Ammonites y Belemnites." },
+      { lat: 38.1520, lon: -1.4050, nombre: "Sierra de Ricote", autor: "Fallot", edad: "Kimmeridgiense (Ammonitico Rosso)", fauna: "Moldes internos de Ammonites (Aspidoceras, Phylloceras), Braquiópodos (Pygope)." },
+      
+      // Cretácico
+      { lat: 40.6180, lon: -0.0950, nombre: "Morella - Capas de Ostreas", autor: "Vilanova y Piera (1859)", edad: "Aptiense", fauna: "Equínidos (Heteraster, Toxaster), Gasterópodos (Cassiope), Bivalvos marinos." },
+      { lat: 38.7250, lon: -0.4520, nombre: "Serrella / Alcoy", autor: "Vilanova / Nicklès", edad: "Barremiense", fauna: "Microammonites piritosos limonitizados (Pulchellia, Spitidiscus)." },
+      { lat: 42.7758, lon: -2.1283, nombre: "Sierra de Urbasa / Zudaire", autor: "Mallada", edad: "Campaniense", fauna: "Gran abundancia de Equínidos irregulares (Micraster, Echinocorys)." },
+      { lat: 43.2981, lon: -2.2588, nombre: "Flysch de Zumaia", autor: "Gómez de Llarena", edad: "Maastrichtiense-Daniense", fauna: "Extraordinaria icnofauna de invertebrados bentónicos marinos." },
+      
+      // Paleozoico
+      { lat: 40.5036, lon: -6.2719, nombre: "Peña de Francia / Monsagro", autor: "Casiano de Prado", edad: "Ordovícico Inferior (Arenig)", fauna: "Icnofósiles de Trilobites gigantes (Cruziana rugosa, Daedalus)." },
+      { lat: 38.7750, lon: -4.8360, nombre: "Almadén", autor: "Casiano de Prado (1855)", edad: "Silúrico", fauna: "Graptolitos (Monograptus) y Braquiópodos." },
+      { lat: 42.9230, lon: -5.3330, nombre: "Valle del Bernesga", autor: "Comte (1959)", edad: "Devónico", fauna: "Arrecifes con Corales rugosos, Crinoideos y Braquiópodos (Spirifer)." },
+      { lat: 39.4660, lon: -4.3830, nombre: "Montes de Toledo (Navas de Estena)", autor: "IGME", edad: "Ordovícico", fauna: "Trilobites (Neseuretus), Bivalvos, y rastros de Cruziana." }
     ];
-    const YACIMIENTOS_HISTORICOS_VILANOVA = [
-      { id: 'hist_griegos', historico: true, nombre: '🏛️ Griegos / San Juan', era: 'Jurásico', edadDetalle: 'Toarciense', lat: 40.4265, lon: -1.7120, litologia: 'Margas', fosiles: 'Ammonites', ambiente: 'Plataforma', magna: 'Hoja 565', desc: 'Estudio Vilanova 1863' }
-    ];
 
-    let puntosUsuario = safeParse('geopaleo_puntos_extra');
-    let areasUsuario = safeParse('geopaleo_areas_abundancia');
-    let puntosOcultosBase = safeParse('geopaleo_ocultos_base');
-
-    function obtenerYacimientosBase() { return YACIMIENTOS_BASE_ORIGINALES.map(y => { const m = localStorage.getItem(`mod_${y.id}`); return m ? {...y, ...JSON.parse(m)} : y; }); }
-    function obtenerYacimientosHistoricos() { return YACIMIENTOS_HISTORICOS_VILANOVA.map(y => { const m = localStorage.getItem(`mod_${y.id}`); return m ? {...y, ...JSON.parse(m)} : y; }); }
-
-    let yacimientoActualId = null, modoAnadirPunto = false, modoAnadirArea = false, modoDinoActivo = false, filtroEraActual = 'TODAS', coordsPendientesNuevo = null;
-
-    // 2. MOTOR ARCGIS BLINDADO
+    // MOTOR ARCGIS BLINDADO
     L.TileLayer.ArcGISRest = L.TileLayer.extend({
       initialize: function(url, options) { this._baseUrl = url; L.TileLayer.prototype.initialize.call(this, url, options); },
       getTileUrl: function(coords) {
         try {
-          const tileSize = this.getTileSize();
-          const nwPoint = coords.scaleBy(tileSize);
-          const sePoint = nwPoint.add(tileSize);
-          const nw = this._map.unproject(nwPoint, coords.z);
-          const se = this._map.unproject(sePoint, coords.z);
-          const nwProj = L.Projection.SphericalMercator.project(nw);
-          const seProj = L.Projection.SphericalMercator.project(se);
-          const bbox = [nwProj.x, seProj.y, seProj.x, nwProj.y].join(',');
-          return `${this._baseUrl}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize.x},${tileSize.y}&dpi=96&format=png32&transparent=true&f=image`;
+          const tSize = this.getTileSize();
+          const nw = this._map.unproject(coords.scaleBy(tSize), coords.z);
+          const se = this._map.unproject(coords.scaleBy(tSize).add(tSize), coords.z);
+          const nwp = L.Projection.SphericalMercator.project(nw);
+          const sep = L.Projection.SphericalMercator.project(se);
+          return `${this._baseUrl}/export?bbox=${nwp.x},${sep.y},${sep.x},${nwp.y}&bboxSR=3857&imageSR=3857&size=${tSize.x},${tSize.y}&dpi=96&format=png32&transparent=true&f=image`;
         } catch(e) { return ''; }
       }
     });
 
-    const mapa = L.map('mapa', { zoomControl: false, doubleClickZoom: false }).setView([40.2, -1.1], 7);
+    const mapa = L.map('mapa', { zoomControl: false }).setView([40.2, -1.1], 7);
     L.control.zoom({ position: 'bottomleft' }).addTo(mapa);
 
-    const capaSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
-    const capaTopoBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: 0.45 });
-    const capaArcGIS1M = new L.TileLayer.ArcGISRest('https://mapas.igme.es/gis/rest/services/Cartografia_Geologica/IGME_Geologico_1M/MapServer', { opacity: 0.75, minZoom: 5, maxZoom: 11 });
-    const capaArcGIS50k = new L.TileLayer.ArcGISRest('https://mapas.igme.es/gis/rest/services/Cartografia_Geologica/IGME_MAGNA_50/MapServer', { opacity: 0.75, minZoom: 12, maxZoom: 19 });
-    const capaEtiquetasLugares = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: 0.85, zIndex: 500 });
+    const capaSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(mapa);
+    const capaTopo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: 0.45 });
+    const capaIGME = new L.TileLayer.ArcGISRest('https://mapas.igme.es/gis/rest/services/Cartografia_Geologica/IGME_MAGNA_50/MapServer', { opacity: 0.75, minZoom: 12, maxZoom: 19 }).addTo(mapa);
 
-    capaSatelite.addTo(mapa); capaArcGIS1M.addTo(mapa); capaArcGIS50k.addTo(mapa); capaEtiquetasLugares.addTo(mapa);
-
-    const grupoAreas = L.layerGroup().addTo(mapa), grupoRutaExpedicion = L.layerGroup().addTo(mapa), grupoPBDB = L.layerGroup().addTo(mapa), grupoMarcadores = L.layerGroup().addTo(mapa);
-
-    mapa.on('zoomend', () => {
-      const aviso = document.getElementById('aviso-zoom-magna');
-      if (mapa.getZoom() >= 12) { aviso.innerHTML = '✅ <b>MAGNA 50k activo:</b> 3 toques para ver PISO GEOLÓGICO'; aviso.style.color = '#4ade80'; } 
-      else { aviso.innerHTML = '🔍 Acerca el mapa para ver MAGNA'; aviso.style.color = '#fbbf24'; }
-    });
-    setTimeout(() => mapa.invalidateSize(), 300);
-
-    let contadorClicks = 0, timerClick = null;
-    mapa.on('click', function(e) {
-      if (modoAnadirPunto) { abrirModalNuevoPunto(e.latlng); return; }
-      if (modoAnadirArea) { abrirModalNuevaArea(e.latlng); return; }
-      contadorClicks++; clearTimeout(timerClick);
-      if (contadorClicks >= 3) { contadorClicks = 0; consultarEstratoYPisoIGME(e.latlng); } 
-      else { timerClick = setTimeout(() => { contadorClicks = 0; }, 550); }
-    });
-
-    async function consultarEstratoYPisoIGME(latlng) {
-      const popup = L.popup().setLatLng(latlng).setContent(`🔍 Analizando IGME...`).openOn(mapa);
-      const bounds = mapa.getBounds(), size = mapa.getSize();
-      const params = new URLSearchParams({ f: 'json', geometry: `${latlng.lng},${latlng.lat}`, geometryType: 'esriGeometryPoint', sr: '4326', layers: 'all', tolerance: '8', mapExtent: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`, imageDisplay: `${size.x},${size.y},96`, returnGeometry: 'false' });
-      try {
-        let res = await fetch(`https://mapas.igme.es/gis/rest/services/Cartografia_Geologica/IGME_MAGNA_50/MapServer/identify?${params.toString()}`);
-        let data = await res.json();
-        if (data && data.results && data.results.length > 0) {
-          let attr = data.results[0].attributes || {};
-          let edad = attr.EDAD || attr.SISTEMA || 'Edad IGME';
-          popup.setContent(`<b>🎯 Edad:</b> ${edad}<br><b>🪨 Lito:</b> ${attr.LITOLOGIA || attr.DESCRIP || 'Sin datos'}<br><button onclick="crearPuntoDesdeIGME(${latlng.lat}, ${latlng.lng}, '${edad.replace(/'/g,"")}', '${(attr.LITOLOGIA||"").replace(/'/g,"")}')" style="margin-top:8px; padding:5px; background:#15803d; color:#fff; border:none; border-radius:5px; width:100%;">+ Guardar Punto</button>`);
-        } else popup.setContent(`📍 Lat: ${latlng.lat.toFixed(4)}, Lon: ${latlng.lng.toFixed(4)}`);
-      } catch (err) { popup.setContent(`📍 Error de conexión IGME.`); }
-    }
-
-    function crearPuntoDesdeIGME(lat, lng, edad, lito) { mapa.closePopup(); abrirModalNuevoPunto({lat, lng}, edad, lito); }
-
-    let pbdbActivo = false;
-    function togglePBDBRapido() { pbdbActivo = !pbdbActivo; document.getElementById('chk-pbdb').checked = pbdbActivo; sincronizarPBDB(pbdbActivo); }
-    async function sincronizarPBDB(activar) {
-      pbdbActivo = activar; grupoPBDB.clearLayers();
-      const btn = document.getElementById('btn-pbdb-top'), txt = document.getElementById('txt-pbdb');
-      if (!activar) { btn.classList.remove('activo'); txt.textContent = 'PBDB'; return; }
-      btn.classList.add('activo'); txt.textContent = 'Cargando...';
-      try {
-        const b = mapa.getBounds();
-        const url = `https://paleobiodb.org/data1.2/occs/list.json?lngmin=${b.getWest().toFixed(3)}&lngmax=${b.getEast().toFixed(3)}&latmin=${b.getSouth().toFixed(3)}&latmax=${b.getNorth().toFixed(3)}&base_name=Mollusca,Echinodermata,Brachiopoda&exclude_id=33815&show=coords,ident,strat&limit=100`;
-        const res = await fetch(url); const data = await res.json();
-        if (data && data.records) {
-          txt.textContent = `PBDB (${data.records.length})`;
-          data.records.forEach(r => {
-            if(r.phl === 'Chordata') return;
-            L.marker([r.lat, r.lng], { icon: L.divIcon({ className: '', html: `<div class="marcador-pbdb">🔬</div>`, iconSize: [26, 26] }) })
-             .bindPopup(`<b>🔬 PBDB</b><br>Fósil: <i>${r.tna}</i><br>Edad: ${r.eag||'?'}`)
-             .addTo(grupoPBDB);
-          });
-        }
-      } catch(e) { txt.textContent = 'PBDB Err'; }
-    }
-    mapa.on('moveend', () => { if(pbdbActivo) sincronizarPBDB(true); });
-
-    let expedicionActiva = false, puntosRuta = [], lineaRuta = null, marcadorCoche = null, distKm = 0, watchId = null, markerGPS = null, circleGPS = null;
-    function toggleExpedicion() {
-      expedicionActiva = !expedicionActiva;
-      const btn = document.getElementById('btn-expedicion'), ban = document.getElementById('banner-expedicion');
-      if (expedicionActiva) { btn.classList.add('activo'); btn.innerHTML = '🛑 Fin Expedición'; ban.style.display = 'block'; if(!watchId) toggleGPS(); }
-      else { btn.classList.remove('activo'); btn.innerHTML = '🥾 Iniciar Expedición'; ban.style.display = 'none'; }
-    }
-
-    function toggleGPS() {
-      const btn = document.getElementById('btn-gps'), txt = document.getElementById('txt-gps');
-      if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; if(markerGPS) mapa.removeLayer(markerGPS); if(circleGPS) mapa.removeLayer(circleGPS); btn.classList.remove('activo', 'buscando'); txt.textContent = 'GPS'; return; }
-      if (!navigator.geolocation) return alert("Sin GPS");
-      btn.classList.add('buscando'); txt.textContent = '...';
-      watchId = navigator.geolocation.watchPosition(pos => {
-        const lat = pos.coords.latitude, lon = pos.coords.longitude, acc = pos.coords.accuracy;
-        btn.classList.remove('buscando'); btn.classList.add('activo'); txt.textContent = `±${Math.round(acc)}m`;
-        if (markerGPS) { markerGPS.setLatLng([lat, lon]); circleGPS.setLatLng([lat, lon]); circleGPS.setRadius(acc); }
-        else {
-          mapa.setView([lat, lon], 15);
-          markerGPS = L.marker([lat, lon], { icon: L.divIcon({ className:'', html:`<div class="marcador-ammonite-gps">${SVG_AMMONITE}</div>`, iconSize:[38,38], iconAnchor:[19,19] }) }).addTo(mapa);
-          circleGPS = L.circle([lat, lon], { radius: acc, color: '#0284c7', weight: 1.5, fillColor: '#38bdf8', fillOpacity: 0.15 }).addTo(mapa);
-        }
-        if (expedicionActiva) {
-          if (!marcadorCoche) marcadorCoche = L.marker([lat, lon], { icon: L.divIcon({ className:'', html: `<div style="background:#ea580c; color:#fff; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; border:2px solid #fff;">🚗</div>`, iconSize:[30,30] }) }).addTo(grupoRutaExpedicion);
-          if (puntosRuta.length > 0) distKm += (mapa.distance(puntosRuta[puntosRuta.length-1], [lat, lon]) / 1000);
-          puntosRuta.push([lat, lon]);
-          document.getElementById('info-expedicion').textContent = `🚗 Distancia: ${distKm.toFixed(2)} km`;
-          if (!lineaRuta) lineaRuta = L.polyline(puntosRuta, { color: '#fb923c', weight: 4, dashArray: '6, 8' }).addTo(grupoRutaExpedicion); else lineaRuta.setLatLngs(puntosRuta);
-        }
-      }, err => { btn.classList.remove('buscando'); txt.textContent = 'GPS Err'; watchId = null; }, { enableHighAccuracy: true });
-    }
-
-    function medirEstratoConSensores(id) {
-      const inp = document.getElementById(id); inp.value = '📐 Calibrando...';
-      const handler = e => { const b = Math.round(e.beta||0), a = Math.round(e.alpha||0); setTimeout(()=>{ window.removeEventListener('deviceorientation', handler); inp.value = `Dir: ${a}° / Buz: ${b}°`; }, 2500); };
-      window.addEventListener('deviceorientation', handler);
-    }
+    const grupoClasicos = L.layerGroup().addTo(mapa);
+    const grupoPBDB = L.layerGroup().addTo(mapa);
 
     function cambiarModoMapa(modo, btn) {
       document.querySelectorAll('.btn-capa').forEach(b => b.classList.remove('activo')); btn.classList.add('activo');
-      if (modo === 'satelite') { mapa.addLayer(capaSatelite); mapa.removeLayer(capaTopoBase); mapa.removeLayer(capaArcGIS50k); }
-      else if (modo === 'igme') { mapa.removeLayer(capaSatelite); mapa.addLayer(capaTopoBase); mapa.addLayer(capaArcGIS50k); }
-      else { mapa.removeLayer(capaTopoBase); mapa.addLayer(capaSatelite); mapa.addLayer(capaArcGIS50k); }
+      if(modo==='satelite'){ mapa.removeLayer(capaTopo); mapa.removeLayer(capaIGME); }
+      else if(modo==='igme'){ mapa.removeLayer(capaSatelite); mapa.addLayer(capaTopo); mapa.addLayer(capaIGME); }
+      else { mapa.removeLayer(capaTopo); mapa.addLayer(capaSatelite); mapa.addLayer(capaIGME); }
     }
-    function ajustarOpacidadIGME(v) { capaArcGIS1M.setOpacity(v/100); capaArcGIS50k.setOpacity(v/100); document.getElementById('val-opacidad').textContent = v+'%'; }
-    
-    function renderizarTodo() {
-      grupoMarcadores.clearLayers(); grupoAreas.clearLayers();
-      if (document.getElementById('chk-base').checked) obtenerYacimientosBase().forEach(y => { if(!puntosOcultosBase.includes(y.id)) crearMarcadorLeaflet(y, false); });
-      if (document.getElementById('chk-historicos').checked) obtenerYacimientosHistoricos().forEach(y => { if(!puntosOcultosBase.includes(y.id)) crearMarcadorLeaflet(y, false); });
-      if (document.getElementById('chk-nuevos').checked) puntosUsuario.forEach(y => crearMarcadorLeaflet(y, true));
-      if (document.getElementById('chk-areas').checked) {
-        areasUsuario.forEach(a => { L.circle([a.lat, a.lon], { radius: a.radio, color: a.color, fillColor: a.color, fillOpacity: 0.28 }).bindPopup(`<b>${a.nombre}</b>`).addTo(grupoAreas); });
+
+    // LÓGICA DE ESCANEO DE ÁREA
+    async function escanearAreaCentral() {
+      const centro = mapa.getCenter();
+      const radioEscanerMetros = 5500; // ~10km diametro = ~100km2 área
+      
+      grupoClasicos.clearLayers();
+      grupoPBDB.clearLayers();
+
+      const btn = document.querySelector('.btn-radar-zona');
+      btn.innerHTML = "⏳ Analizando sustrato...";
+      btn.style.background = "#d97706";
+
+      // 1. Cargar Clásicos Históricos en el radio
+      if(document.getElementById('chk-clasicos').checked) {
+        YACIMIENTOS_HISTORICOS.forEach(yac => {
+          const dist = mapa.distance(centro, [yac.lat, yac.lon]);
+          if(dist <= radioEscanerMetros * 2) { // Un poco más de margen para los históricos
+            L.marker([yac.lat, yac.lon], { icon: L.divIcon({ className:'', html: `<div class="marcador-historico">🏛️</div>` }) })
+             .bindPopup(`
+                <div class="popup-titulo">🏛️ ${yac.nombre}</div>
+                <div class="popup-datos">
+                  <b>Investigador:</b> ${yac.autor}<br>
+                  <b>Piso:</b> ${yac.edad}<br>
+                  <b>Fauna Histórica:</b> ${yac.fauna}
+                </div>
+             `).addTo(grupoClasicos);
+          }
+        });
       }
+
+      // 2. Cargar PBDB en el Bounding Box exacto del escáner
+      if(document.getElementById('chk-pbdb').checked) {
+        // Calcular BBox de +/- 0.05 grados (~5.5km) desde el centro
+        const lngMin = (centro.lng - 0.05).toFixed(4);
+        const lngMax = (centro.lng + 0.05).toFixed(4);
+        const latMin = (centro.lat - 0.05).toFixed(4);
+        const latMax = (centro.lat + 0.05).toFixed(4);
+
+        // Filtro estricto invertebrados
+        const urlPBDB = `https://paleobiodb.org/data1.2/occs/list.json?lngmin=${lngMin}&lngmax=${lngMax}&latmin=${latMin}&latmax=${latMax}&base_name=Mollusca,Echinodermata,Brachiopoda,Arthropoda,Cnidaria,Porifera,Bryozoa&exclude_id=33815&show=coords,ident,strat,class&limit=500`;
+
+        try {
+          const res = await fetch(urlPBDB);
+          const data = await res.json();
+          
+          if(data && data.records) {
+            // AGRUPAR FÓSILES POR COORDENADA/YACIMIENTO
+            const yacimientosAgrupados = {};
+            
+            data.records.forEach(r => {
+              if(!r.lat || !r.lng || r.phl === 'Chordata') return; // Excluir vertebrados
+              
+              const key = `${r.lat.toFixed(4)}_${r.lng.toFixed(4)}`;
+              if(!yacimientosAgrupados[key]) {
+                yacimientosAgrupados[key] = {
+                  lat: r.lat, lng: r.lng,
+                  edad: r.eag || r.oei || 'Edad Indet.',
+                  formacion: r.sfm || 'Fm. desconocida',
+                  ammonites: new Set(), braquiopodos: new Set(),
+                  equinodermos: new Set(), otros: new Set()
+                };
+              }
+              
+              // Clasificación experta
+              const taxon = r.tna;
+              const clase = r.cll || '';
+              if(clase.includes('Cephalopoda')) yacimientosAgrupados[key].ammonites.add(taxon);
+              else if(clase.includes('Rhynchonellata') || clase.includes('Lingulata') || clase.includes('Craniata')) yacimientosAgrupados[key].braquiopodos.add(taxon);
+              else if(clase.includes('Echinoidea') || clase.includes('Crinoidea')) yacimientosAgrupados[key].equinodermos.add(taxon);
+              else yacimientosAgrupados[key].otros.add(taxon);
+            });
+
+            // RENDERIZAR MARCADORES PBDB AGRUPADOS
+            Object.values(yacimientosAgrupados).forEach(yac => {
+              let htmlFauna = '';
+              if(yac.ammonites.size > 0) htmlFauna += `<b>Ammonoideos/Cefalópodos:</b> ${Array.from(yac.ammonites).join(', ')}<br>`;
+              if(yac.braquiopodos.size > 0) htmlFauna += `<b>Braquiópodos:</b> ${Array.from(yac.braquiopodos).join(', ')}<br>`;
+              if(yac.equinodermos.size > 0) htmlFauna += `<b>Equinodermos:</b> ${Array.from(yac.equinodermos).join(', ')}<br>`;
+              if(yac.otros.size > 0) htmlFauna += `<b>Otros (Bivalvos/Gasterópodos/Icnitas):</b> ${Array.from(yac.otros).slice(0,5).join(', ')}...<br>`;
+
+              L.marker([yac.lat, yac.lng], { icon: L.divIcon({ className:'', html: `<div class="marcador-pbdb">🔬</div>` }) })
+               .bindPopup(`
+                  <div class="popup-titulo">🔬 Estudio Científico (PBDB)</div>
+                  <div class="popup-datos">
+                    <b>Edad:</b> ${yac.edad}<br>
+                    <b>Unidad Litoestratigráfica:</b> ${yac.formacion}<br>
+                    <div class="taxa-lista">${htmlFauna || 'Invertebrados indet.'}</div>
+                  </div>
+               `).addTo(grupoPBDB);
+            });
+          }
+        } catch(e) { console.error("Error PBDB", e); }
+      }
+
+      // Finalizar Escaneo
+      setTimeout(() => {
+        btn.innerHTML = "📡 Escanear Área Visual (100 km²)";
+        btn.style.background = "#7c3aed";
+      }, 500);
     }
-
-    function crearMarcadorLeaflet(y, personalizado) {
-      const color = COLORES_ICS[y.era] || '#fbbf24', ini = y.era.charAt(0);
-      const h = y.historico ? `<div class="marcador-historico">🏛️</div>` : `<div class="marcador-geo" style="background:${color};">${ini}</div>`;
-      L.marker([y.lat, y.lon], { icon: L.divIcon({ className:'', html: h, iconSize:[30,30] }) }).on('click', () => {
-        if(modoDinoActivo) { if(confirm("¿Eliminar?")) { if(personalizado){ puntosUsuario=puntosUsuario.filter(p=>p.id!==y.id); localStorage.setItem('geopaleo_puntos_extra', JSON.stringify(puntosUsuario)); } else { puntosOcultosBase.push(y.id); localStorage.setItem('geopaleo_ocultos_base', JSON.stringify(puntosOcultosBase)); } renderizarTodo(); } } else abrirFicha(y);
-      }).addTo(grupoMarcadores);
-    }
-
-    function desactivarModosEdicion() { modoAnadirPunto=false; modoAnadirArea=false; modoDinoActivo=false; document.getElementById('btn-nuevo-punto').classList.remove('modo-activo'); document.getElementById('btn-area-abundancia').classList.remove('modo-activo'); document.getElementById('btn-modo-dino').classList.remove('activo'); }
-    function toggleModoDino() { const e = modoDinoActivo; desactivarModosEdicion(); if(!e) { modoDinoActivo=true; document.getElementById('btn-modo-dino').classList.add('activo'); } }
-    function alternarModoNuevoPunto() { const e = modoAnadirPunto; desactivarModosEdicion(); if(!e) { modoAnadirPunto=true; document.getElementById('btn-nuevo-punto').classList.add('modo-activo'); } }
-    function alternarModoNuevaArea() { const e = modoAnadirArea; desactivarModosEdicion(); if(!e) { modoAnadirArea=true; document.getElementById('btn-area-abundancia').classList.add('modo-activo'); } }
-    
-    function abrirModalNuevoPunto(ll, e='', l='') { coordsPendientesNuevo=ll; document.getElementById('nuevo-edad').value=e; document.getElementById('nuevo-lito').value=l; document.getElementById('modal-nuevo').classList.add('visible'); }
-    function cerrarModalNuevo() { document.getElementById('modal-nuevo').classList.remove('visible'); desactivarModosEdicion(); }
-    function confirmarNuevoPunto() { puntosUsuario.push({ id:'c_'+Date.now(), lat:coordsPendientesNuevo.lat, lon:coordsPendientesNuevo.lng, nombre:document.getElementById('nuevo-nombre').value||'Punto', era:document.getElementById('nuevo-era').value, edadDetalle:document.getElementById('nuevo-edad').value, buzamiento:document.getElementById('nuevo-buzamiento').value, litologia:document.getElementById('nuevo-lito').value, fosiles:document.getElementById('nuevo-fosiles').value }); localStorage.setItem('geopaleo_puntos_extra', JSON.stringify(puntosUsuario)); cerrarModalNuevo(); renderizarTodo(); }
-
-    function abrirModalNuevaArea(ll, n='') { coordsPendientesNuevo=ll; document.getElementById('area-nombre').value=n; document.getElementById('modal-area').classList.add('visible'); }
-    function cerrarModalArea() { document.getElementById('modal-area').classList.remove('visible'); desactivarModosEdicion(); }
-    function confirmarNuevaArea() { areasUsuario.push({ id:'a_'+Date.now(), lat:coordsPendientesNuevo.lat, lon:coordsPendientesNuevo.lng, nombre:document.getElementById('area-nombre').value||'Área', color:document.getElementById('area-color').value, radio:Number(document.getElementById('area-radio').value)||120, notas:document.getElementById('area-notas').value }); localStorage.setItem('geopaleo_areas_abundancia', JSON.stringify(areasUsuario)); cerrarModalArea(); renderizarTodo(); }
-
-    function abrirFicha(y) { yacimientoActualId = y.id; document.getElementById('ficha-titulo').textContent = y.nombre; document.getElementById('edit-buzamiento').value = y.buzamiento||''; document.getElementById('edit-litologia').value = y.litologia||''; document.getElementById('ficha').classList.add('abierta'); }
-    function cerrarFicha() { document.getElementById('ficha').classList.remove('abierta'); }
-    function guardarCambiosYacimiento() { alert("Guardado"); }
-    function exportarBackup() { alert("Exportando..."); }
-    function toggleMenuLateral(a) { document.getElementById('menu-lateral').classList.toggle('abierto', a); }
-
-    // Arranque seguro
-    try { renderizarTodo(); } catch(e) { alert("Error al cargar marcadores: " + e); }
   </script>
 </body>
 </html>
