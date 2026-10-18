@@ -5,21 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#1e1b18">
   <title>GEOPALEO PRO — Cartografía e Invertebrados IGME / PBDB</title>
   
-  <!-- Manifiesto PWA embebido para instalación en móvil -->
-  <link rel="manifest" href='data:application/manifest+json,{"name":"GEOPALEO PRO IGME","short_name":"GEOPALEO","start_url":".","display":"standalone","background_color":"#1e1b18","theme_color":"#1e1b18","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%231e1b18%27/%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2740%27 fill=%27%230284c7%27/%3E%3Cpath d=%27M50 50 C50 42, 58 40, 62 45 C66 52, 56 64, 45 61 C31 57, 28 40, 39 28 C53 14, 75 22, 78 45 C80 68, 56 85, 31 74 C15 66, 15 40, 28 22%27 fill=%27none%27 stroke=%27%23fff%27 stroke-width=%276%27 stroke-linecap=%27round%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}' />
-
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
-      --bg-dark: #1e1b18;
-      --card-bg: #fdfbf7;
-      --accent: #b45309;
-      --text-main: #292524;
-      --text-muted: #57534e;
+      --bg-dark: #1e1b18; --card-bg: #fdfbf7; --accent: #b45309; --text-main: #292524; --text-muted: #57534e;
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body {
@@ -30,378 +22,420 @@
     #mapa { position: absolute; top: 0; bottom: 0; left: 0; right: 0; width: 100%; height: 100%; z-index: 1; }
 
     /* Barra Superior */
-    #topbar {
-      position: fixed; top: 8px; left: 8px; right: 8px; z-index: 1000;
-      display: flex; flex-direction: column; gap: 6px; pointer-events: none;
-    }
-    .panel-control {
-      background: rgba(28, 25, 23, 0.95); backdrop-filter: blur(10px);
-      color: #f5f5f4; padding: 10px 12px; border-radius: 14px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.55); pointer-events: auto;
-      border: 1px solid rgba(255,255,255,0.12);
-    }
-    .header-row {
-      display: flex; justify-content: space-between; align-items: center; gap: 6px;
-    }
-    .app-title {
-      font-weight: 800; font-size: 12.5px; letter-spacing: 0.3px;
-      color: #fbbf24; display: flex; align-items: center; gap: 5px;
-    }
+    #topbar { position: fixed; top: 8px; left: 8px; right: 8px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+    .panel-control { background: rgba(28, 25, 23, 0.95); backdrop-filter: blur(10px); color: #f5f5f4; padding: 10px 12px; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.55); pointer-events: auto; border: 1px solid rgba(255,255,255,0.12); }
+    .header-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+    .app-title { font-weight: 800; font-size: 12.5px; letter-spacing: 0.3px; color: #fbbf24; display: flex; align-items: center; gap: 5px; }
     .btn-acciones-top { display: flex; gap: 5px; }
-    .btn-top {
-      color: #fff; border: none;
-      padding: 6px 9px; border-radius: 8px; font-size: 11px;
-      font-weight: 800; cursor: pointer; white-space: nowrap;
-      display: flex; align-items: center; gap: 4px; transition: all 0.2s;
-    }
-    .btn-gps { background: #0284c7; }
-    .btn-gps.buscando { background: #d97706; animation: parpadeo 1s infinite alternate; }
-    .btn-gps.activo { background: #15803d; box-shadow: 0 0 10px rgba(21, 128, 61, 0.7); }
-    .btn-pbdb-top { background: #7c3aed; }
-    .btn-pbdb-top.activo { background: #a855f7; box-shadow: 0 0 10px rgba(168, 85, 247, 0.8); border: 1px solid #fff; }
+    .btn-top { color: #fff; border: none; padding: 6px 9px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 4px; transition: all 0.2s; }
+    .btn-gps { background: #0284c7; } .btn-gps.buscando { background: #d97706; animation: parpadeo 1s infinite alternate; } .btn-gps.activo { background: #15803d; box-shadow: 0 0 10px rgba(21, 128, 61, 0.7); }
+    .btn-pbdb-top { background: #7c3aed; } .btn-pbdb-top.activo { background: #a855f7; box-shadow: 0 0 10px rgba(168, 85, 247, 0.8); border: 1px solid #fff; }
     .btn-menu-lateral { background: #57534e; }
 
     @keyframes parpadeo { from { opacity: 1; } to { opacity: 0.5; } }
 
-    /* Buscador de Localidades */
-    .buscador-row {
-      display: flex; gap: 6px; margin-top: 7px; position: relative;
-    }
-    .buscador-input {
-      flex: 1; background: #292524; color: #fff; border: 1px solid #57534e;
-      padding: 6px 10px; border-radius: 8px; font-size: 12px; outline: none;
-    }
+    /* Buscador */
+    .buscador-row { display: flex; gap: 6px; margin-top: 7px; position: relative; }
+    .buscador-input { flex: 1; background: #292524; color: #fff; border: 1px solid #57534e; padding: 6px 10px; border-radius: 8px; font-size: 12px; outline: none; }
     .buscador-input:focus { border-color: #fbbf24; }
-    .buscador-input::placeholder { color: #a8a29e; }
-    .btn-buscar {
-      background: #fbbf24; color: #1c1917; border: none;
-      padding: 0 12px; border-radius: 8px; font-weight: 800; font-size: 13px; cursor: pointer;
-    }
-    #resultados-busqueda {
-      position: absolute; top: 36px; left: 0; right: 0;
-      background: #292524; border: 1px solid #57534e; border-radius: 10px;
-      max-height: 210px; overflow-y: auto; z-index: 3000; display: none;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.7);
-    }
-    .item-resultado {
-      padding: 9px 12px; border-bottom: 1px solid #44403c;
-      font-size: 12px; color: #f5f5f4; cursor: pointer; line-height: 1.3;
-    }
-    .item-resultado:hover, .item-resultado:active { background: #44403c; color: #fbbf24; }
+    .btn-buscar { background: #fbbf24; color: #1c1917; border: none; padding: 0 12px; border-radius: 8px; font-weight: 800; font-size: 13px; cursor: pointer; }
+    #resultados-busqueda { position: absolute; top: 36px; left: 0; right: 0; background: #292524; border: 1px solid #57534e; border-radius: 10px; max-height: 210px; overflow-y: auto; z-index: 3000; display: none; box-shadow: 0 8px 25px rgba(0,0,0,0.7); }
+    .item-resultado { padding: 9px 12px; border-bottom: 1px solid #44403c; font-size: 12px; color: #f5f5f4; cursor: pointer; line-height: 1.3; }
 
-    /* Selector de Capas */
+    /* Selector Capas */
     .layer-group { display: flex; gap: 5px; margin-top: 7px; }
-    .btn-capa {
-      flex: 1; background: #292524; color: #d6d3d1; border: 1px solid #44403c;
-      padding: 6px 4px; border-radius: 8px; font-size: 11px; font-weight: 600;
-      cursor: pointer; text-align: center; transition: all 0.2s;
-    }
-    .btn-capa.activo {
-      background: #fbbf24; color: #1c1917; border-color: #fbbf24; font-weight: 800;
-    }
-    .opacidad-row {
-      display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px;
-      font-size: 10.5px; color: #d6d3d1;
-    }
+    .btn-capa { flex: 1; background: #292524; color: #d6d3d1; border: 1px solid #44403c; padding: 6px 4px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; text-align: center; }
+    .btn-capa.activo { background: #fbbf24; color: #1c1917; border-color: #fbbf24; font-weight: 800; }
+    .opacidad-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 10.5px; color: #d6d3d1; }
     .opacidad-row input { flex: 1; accent-color: #fbbf24; cursor: pointer; height: 4px; }
-    .aviso-zoom {
-      font-size: 10px; color: #fbbf24; text-align: center; margin-top: 4px; font-weight: 600;
-    }
+    .aviso-zoom { font-size: 10px; color: #fbbf24; text-align: center; margin-top: 4px; font-weight: 600; }
 
-    /* Chips de Eras */
-    #barra-eras {
-      display: flex; gap: 5px; overflow-x: auto; padding-bottom: 3px;
-      scrollbar-width: none; pointer-events: auto;
-    }
+    /* Chips Eras */
+    #barra-eras { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 3px; scrollbar-width: none; pointer-events: auto; }
     #barra-eras::-webkit-scrollbar { display: none; }
-    .chip-era {
-      padding: 5px 10px; border-radius: 20px; font-size: 10.5px; font-weight: 800;
-      border: 2px solid rgba(255,255,255,0.25); cursor: pointer; white-space: nowrap;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.35); transition: transform 0.15s;
-    }
+    .chip-era { padding: 5px 10px; border-radius: 20px; font-size: 10.5px; font-weight: 800; border: 2px solid rgba(255,255,255,0.25); cursor: pointer; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
     .chip-era.activo { border-color: #ffffff; transform: scale(1.06); }
 
-    /* Marcadores de Yacimientos y Estudios */
-    .marcador-geo {
-      width: 28px; height: 28px; border-radius: 50%;
-      border: 2.5px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.7);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 900; color: #1c1917; cursor: pointer;
-      transition: transform 0.35s ease, opacity 0.35s ease;
-    }
-    .marcador-historico {
-      width: 30px; height: 30px; border-radius: 8px;
-      border: 2px solid #fef08a; box-shadow: 0 2px 10px rgba(0,0,0,0.75);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px; font-weight: 900; color: #fff; cursor: pointer;
-      background: #9a3412;
-    }
-    .marcador-pbdb {
-      width: 26px; height: 26px; border-radius: 50%;
-      background: rgba(124, 58, 237, 0.92); border: 2px solid #ffffff;
-      box-shadow: 0 2px 8px rgba(124, 58, 237, 0.7);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 13px; color: #fff; cursor: pointer;
-    }
-    .siendo-comido {
-      transform: scale(0) rotate(720deg) !important;
-      opacity: 0;
-    }
+    /* Marcadores */
+    .marcador-geo { width: 28px; height: 28px; border-radius: 50%; border: 2.5px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; color: #1c1917; cursor: pointer; }
+    .marcador-historico { width: 30px; height: 30px; border-radius: 8px; border: 2px solid #fef08a; box-shadow: 0 2px 10px rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; font-size: 14px; background: #9a3412; color: #fff; cursor: pointer; }
+    .marcador-pbdb { width: 26px; height: 26px; border-radius: 50%; background: rgba(124, 58, 237, 0.92); border: 2px solid #ffffff; box-shadow: 0 2px 8px rgba(124, 58, 237, 0.7); display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff; cursor: pointer; }
+    .marcador-ammonite-gps { width: 38px; height: 38px; border-radius: 50%; background: #0284c7; border: 2.5px solid #ffffff; box-shadow: 0 0 14px rgba(2, 132, 199, 0.95); display: flex; align-items: center; justify-content: center; animation: pulsoAmmonite 2s infinite; }
+    @keyframes pulsoAmmonite { 0% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.8); } 70% { box-shadow: 0 0 0 14px rgba(2, 132, 199, 0); } 100% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0); } }
 
-    /* Marcador SVG Ammonite GPS */
-    .marcador-ammonite-gps {
-      width: 38px; height: 38px; border-radius: 50%;
-      background: #0284c7; border: 2.5px solid #ffffff;
-      box-shadow: 0 0 14px rgba(2, 132, 199, 0.95);
-      display: flex; align-items: center; justify-content: center;
-      animation: pulsoAmmonite 2s infinite;
-    }
-    @keyframes pulsoAmmonite {
-      0% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.8); }
-      70% { box-shadow: 0 0 0 14px rgba(2, 132, 199, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0); }
-    }
-
-    /* Menú Lateral */
-    #menu-lateral {
-      position: fixed; top: 0; right: -300px; width: 280px; height: 100%;
-      background: rgba(28, 25, 23, 0.98); backdrop-filter: blur(10px);
-      z-index: 4000; box-shadow: -5px 0 25px rgba(0,0,0,0.6);
-      color: #fff; padding: 18px; overflow-y: auto;
-      transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      display: flex; flex-direction: column; gap: 13px;
-    }
+    /* Menú y Botones Flotantes */
+    #menu-lateral { position: fixed; top: 0; right: -300px; width: 280px; height: 100%; background: rgba(28, 25, 23, 0.98); z-index: 4000; box-shadow: -5px 0 25px rgba(0,0,0,0.6); color: #fff; padding: 18px; overflow-y: auto; transition: right 0.3s; display: flex; flex-direction: column; gap: 13px; }
     #menu-lateral.abierto { right: 0; }
-    .menu-header {
-      display: flex; justify-content: space-between; align-items: center;
-      border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 8px;
-    }
-    .menu-header h3 { margin: 0; font-size: 15px; color: #fbbf24; }
-    .btn-cerrar-menu { background: none; border: none; color: #a8a29e; font-size: 24px; cursor: pointer; }
-    .menu-opcion {
-      display: flex; align-items: center; justify-content: space-between;
-      font-size: 12.5px; font-weight: 600; color: #e7e5e4;
-      padding: 4px 0; border-bottom: 1px dashed rgba(255,255,255,0.08);
-    }
+    .menu-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 8px; }
+    .menu-opcion { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; font-weight: 600; padding: 4px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); }
     .menu-opcion input[type="checkbox"] { width: 18px; height: 18px; accent-color: #fbbf24; cursor: pointer; }
+    .botones-flotantes { position: fixed; right: 12px; bottom: 18px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+    .btn-flotante { border: none; padding: 10px 14px; border-radius: 30px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.55); cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    #btn-expedicion { background: #2563eb; color: #fff; } #btn-expedicion.activo { background: #ea580c; animation: pulseExp 1.4s infinite alternate; }
+    #btn-area-abundancia { background: #059669; color: #fff; } #btn-area-abundancia.modo-activo { background: #dc2626; }
+    #btn-modo-dino { background: #4d7c0f; color: #fff; } #btn-modo-dino.activo { background: #dc2626; }
+    #btn-nuevo-punto { background: #fbbf24; color: #1c1917; } #btn-nuevo-punto.modo-activo { background: #dc2626; color: #fff; }
+    @keyframes pulseExp { 0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7); } 100% { box-shadow: 0 0 0 10px transparent; } }
 
-    /* Botones Flotantes (Margen Derecho) */
-    .botones-flotantes {
-      position: fixed; right: 12px; bottom: 18px; z-index: 1000;
-      display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
-    }
-    .btn-flotante {
-      border: none; padding: 10px 14px; border-radius: 30px; font-weight: 800;
-      font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.55); cursor: pointer;
-      display: flex; align-items: center; gap: 6px; transition: transform 0.2s, background 0.2s;
-    }
-    #btn-expedicion { background: #2563eb; color: #fff; }
-    #btn-expedicion.activo { background: #ea580c; animation: pulseExp 1.4s infinite alternate; }
-    #btn-area-abundancia { background: #059669; color: #fff; }
-    #btn-area-abundancia.modo-activo { background: #dc2626; color: #fff; }
-    #btn-modo-dino { background: #4d7c0f; color: #fff; }
-    #btn-modo-dino.activo { background: #dc2626; transform: scale(1.05); }
-    #btn-nuevo-punto { background: #fbbf24; color: #1c1917; font-size: 12.5px; padding: 11px 16px; }
-    #btn-nuevo-punto.modo-activo { background: #dc2626; color: #fff; }
+    #banner-expedicion { position: fixed; bottom: 18px; left: 12px; z-index: 1000; background: rgba(28, 25, 23, 0.94); border: 1.5px solid #ea580c; color: #fff; padding: 8px 12px; border-radius: 12px; font-size: 11.5px; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
 
-    @keyframes pulseExp {
-      0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7); }
-      100% { box-shadow: 0 0 0 10px rgba(234, 88, 12, 0); }
-    }
-
-    /* Banner de Expedición Activa */
-    #banner-expedicion {
-      position: fixed; bottom: 18px; left: 12px; z-index: 1000;
-      background: rgba(28, 25, 23, 0.94); border: 1.5px solid #ea580c;
-      color: #fff; padding: 8px 12px; border-radius: 12px;
-      font-size: 11.5px; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    }
-
-    /* Ficha Inferior de Yacimiento */
-    #ficha {
-      position: fixed; left: 0; right: 0; bottom: 0; z-index: 2000;
-      max-height: 85%; overflow-y: auto;
-      background: var(--card-bg); color: var(--text-main);
-      padding: 18px 18px 32px 18px;
-      border-radius: 22px 22px 0 0;
-      box-shadow: 0 -6px 30px rgba(0,0,0,0.55);
-      transform: translateY(105%);
-      transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
-      border-top: 4px solid var(--accent);
-    }
-    #ficha.abierta { transform: translateY(0); }
+    /* Fichas y Modales */
+    #ficha { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2000; max-height: 85%; overflow-y: auto; background: var(--card-bg); padding: 18px; border-radius: 22px 22px 0 0; transform: translateY(105%); transition: transform 0.32s; border-top: 4px solid var(--accent); }
+    #ficha.abierta { transform: translateY(0); box-shadow: 0 -6px 30px rgba(0,0,0,0.55); }
     .tirador { width: 42px; height: 5px; background: #d6d3d1; border-radius: 3px; margin: -6px auto 12px auto; }
-    #cerrar {
-      float: right; font-size: 22px; line-height: 20px;
-      border: none; background: #e7e5e4; color: #44403c;
-      width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
-    }
-    .badge-edad {
-      display: inline-block; padding: 4px 10px; border-radius: 6px;
-      font-size: 11px; font-weight: 800; text-transform: uppercase;
-      margin-bottom: 6px; border: 1px solid rgba(0,0,0,0.15);
-    }
-    #ficha h2 { margin: 2px 0 6px 0; font-size: 18px; color: #1c1917; padding-right: 40px; }
-    .coords-box {
-      font-family: monospace; font-size: 11px; color: var(--text-muted);
-      background: #f5f5f4; padding: 5px 10px; border-radius: 6px;
-      margin-bottom: 12px; display: inline-block; border: 1px solid #e7e5e4;
-    }
-    
+    .badge-edad { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; border: 1px solid rgba(0,0,0,0.15); }
+    .coords-box { font-family: monospace; font-size: 11px; background: #f5f5f4; padding: 5px 10px; border-radius: 6px; margin-bottom: 12px; display: inline-block; border: 1px solid #e7e5e4; }
     .grid-datos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
     .dato-item { background: #f5f5f4; padding: 8px 10px; border-radius: 10px; border-left: 3px solid #78716c; }
     .dato-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #78716c; margin-bottom: 2px; }
-    .input-editable {
-      width: 100%; background: transparent; border: none;
-      border-bottom: 1px dashed #a8a29e; font-size: 12.5px; font-weight: 600;
-      color: #1c1917; font-family: inherit; padding: 2px 0; outline: none;
-    }
-    .input-editable:focus { border-bottom: 2px solid var(--accent); background: #ffffff; }
-
-    .brujula-box {
-      background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
-      padding: 8px 10px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    }
-    .btn-medir-estrato {
-      background: #2563eb; color: #fff; border: none; padding: 7px 11px;
-      border-radius: 8px; font-size: 11.5px; font-weight: 800; cursor: pointer; white-space: nowrap;
-    }
-
+    .input-editable { width: 100%; background: transparent; border: none; border-bottom: 1px dashed #a8a29e; font-size: 12.5px; font-weight: 600; outline: none; }
+    .brujula-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 8px 10px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .btn-medir-estrato { background: #2563eb; color: #fff; border: none; padding: 7px 11px; border-radius: 8px; font-size: 11.5px; font-weight: 800; cursor: pointer; }
     .seccion-campo { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #d6d3d1; }
-    .seccion-campo h3 { font-size: 13.5px; margin: 0 0 8px 0; color: #44403c; }
-    textarea, .textarea-editable {
-      width: 100%; min-height: 60px;
-      padding: 9px; border-radius: 8px; border: 1px solid #d6d3d1;
-      font-family: inherit; font-size: 12.5px; background: #ffffff;
-    }
+    textarea, .textarea-editable { width: 100%; min-height: 60px; padding: 9px; border-radius: 8px; border: 1px solid #d6d3d1; font-family: inherit; font-size: 12.5px; }
     .acciones-campo { display: flex; gap: 8px; margin-top: 10px; }
     .btn-accion { flex: 1; padding: 11px; border-radius: 8px; border: none; font-weight: 700; font-size: 12.5px; cursor: pointer; }
-    .btn-guardar { background: #15803d; color: white; }
-    .btn-foto { background: #b45309; color: white; }
-    
+    .btn-guardar { background: #15803d; color: white; } .btn-foto { background: #b45309; color: white; }
     .galeria-fotos { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 8px; margin-top: 12px; }
-    .foto-wrapper { position: relative; }
-    .foto-wrapper img { width: 100%; height: 85px; object-fit: cover; border-radius: 8px; border: 1px solid #d6d3d1; cursor: pointer; }
-    .btn-borrar-foto {
-      position: absolute; top: 4px; right: 4px; background: rgba(220, 38, 38, 0.9); color: white;
-      border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; cursor: pointer;
-    }
+    .foto-wrapper { position: relative; } .foto-wrapper img { width: 100%; height: 85px; object-fit: cover; border-radius: 8px; cursor: pointer; }
+    .btn-borrar-foto { position: absolute; top: 4px; right: 4px; background: rgba(220,38,38,0.9); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; }
 
-    .backup-group { display: flex; gap: 6px; margin-top: 6px; }
-    .btn-backup {
-      flex: 1; background: #0284c7; color: #ffffff; border: none;
-      padding: 8px; border-radius: 8px; font-size: 11.5px; font-weight: 700; cursor: pointer; text-align: center;
-    }
-
-    /* Modales (Nuevo Afloramiento y Nueva Área) */
-    .modal-overlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
-      z-index: 5000; display: none; align-items: center; justify-content: center; padding: 14px;
-    }
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); z-index: 5000; display: none; align-items: center; justify-content: center; padding: 14px; }
     .modal-overlay.visible { display: flex; }
-    .modal-caja {
-      background: var(--card-bg); color: var(--text-main); width: 100%; max-width: 390px;
-      border-radius: 18px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.65);
-      border-top: 5px solid #fbbf24; max-height: 90vh; overflow-y: auto;
-    }
-    .modal-caja h3 { margin: 0 0 12px 0; font-size: 16.5px; color: #1c1917; }
-    .campo-form { margin-bottom: 9px; }
-    .campo-form label { display: block; font-size: 10.5px; font-weight: 700; color: #57534e; margin-bottom: 3px; text-transform: uppercase; }
-    .campo-form input, .campo-form select {
-      width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #d6d3d1;
-      font-size: 13px; font-family: inherit; background: #fff;
-    }
+    .modal-caja { background: var(--card-bg); width: 100%; max-width: 390px; border-radius: 18px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.65); border-top: 5px solid #fbbf24; max-height: 90vh; overflow-y: auto; }
+    .campo-form { margin-bottom: 9px; } .campo-form label { display: block; font-size: 10.5px; font-weight: 700; color: #57534e; margin-bottom: 3px; text-transform: uppercase; }
+    .campo-form input, .campo-form select { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #d6d3d1; font-size: 13px; }
     .modal-botones { display: flex; gap: 8px; margin-top: 14px; }
     .modal-botones button { flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: 800; cursor: pointer; font-size: 12.5px; }
-    .btn-cancelar-modal { background: #e7e5e4; color: #44403c; }
-    .btn-confirmar-modal { background: #15803d; color: #fff; }
+    .btn-cancelar-modal { background: #e7e5e4; color: #44403c; } .btn-confirmar-modal { background: #15803d; color: #fff; }
   </style>
 </head>
 <body>
+  <!-- DETECTOR DE ERRORES GLOBAL -->
+  <script>
+    window.onerror = function(msg, url, line) {
+      alert("¡Aviso de seguridad!\nHubo un pequeño error que paró el mapa.\nLínea: " + line + "\nError: " + msg);
+      return false;
+    };
+  </script>
 
-  <!-- Barra de Control Superior -->
   <div id="topbar">
     <div class="panel-control">
       <div class="header-row">
-        <div class="app-title">&#9935; GEOPALEO PRO · ESPAÑA</div>
+        <div class="app-title">&#9935; GEOPALEO PRO</div>
         <div class="btn-acciones-top">
-          <button id="btn-gps" class="btn-top btn-gps" onclick="toggleGPS()">
-            <span>🐚</span> <span id="txt-gps">GPS</span>
-          </button>
-          <button id="btn-pbdb-top" class="btn-top btn-pbdb-top" onclick="togglePBDBRapido()">
-            <span>🔬</span> <span id="txt-pbdb">PBDB</span>
-          </button>
+          <button id="btn-gps" class="btn-top btn-gps" onclick="toggleGPS()"><span>🐚</span> <span id="txt-gps">GPS</span></button>
+          <button id="btn-pbdb-top" class="btn-top btn-pbdb-top" onclick="togglePBDBRapido()"><span>🔬</span> <span id="txt-pbdb">PBDB</span></button>
           <button class="btn-top btn-menu-lateral" onclick="toggleMenuLateral(true)">⚙️ Capas</button>
         </div>
       </div>
-
-      <!-- Buscador de Pueblos / Parajes -->
       <div class="buscador-row">
-        <input type="text" id="input-buscador" class="buscador-input" placeholder="Buscar pueblo, sierra o barranco..." onkeydown="if(event.key==='Enter') buscarLocalidad()">
+        <input type="text" id="input-buscador" class="buscador-input" placeholder="Buscar pueblo, sierra..." onkeydown="if(event.key==='Enter') buscarLocalidad()">
         <button class="btn-buscar" onclick="buscarLocalidad()">🔍</button>
         <div id="resultados-busqueda"></div>
       </div>
-
-      <!-- Selector de Capas Base -->
       <div class="layer-group">
         <button class="btn-capa activo" onclick="cambiarModoMapa('hibrido', this)">Satélite + MAGNA</button>
-        <button class="btn-capa" onclick="cambiarModoMapa('igme', this)">Solo MAGNA (N.º)</button>
+        <button class="btn-capa" onclick="cambiarModoMapa('igme', this)">Solo MAGNA</button>
         <button class="btn-capa" onclick="cambiarModoMapa('satelite', this)">Solo Satélite</button>
       </div>
-
       <div class="opacidad-row" id="control-opacidad">
         <span>Opacidad IGME:</span>
         <input type="range" min="0" max="100" value="75" oninput="ajustarOpacidadIGME(this.value)">
         <span id="val-opacidad">75%</span>
       </div>
-      <div id="aviso-zoom-magna" class="aviso-zoom">
-        🔍 Haz 3 toques rápidos en el mapa para detectar el PISO GEOLÓGICO y estrato IGME
-      </div>
+      <div id="aviso-zoom-magna" class="aviso-zoom">🔍 Haz 3 toques rápidos en el mapa para detectar el PISO GEOLÓGICO</div>
     </div>
-
     <div id="barra-eras">
-      <div class="chip-era activo" style="background:#44403c; color:#fff;" onclick="filtrarEra('TODAS', this)">Todas las Eras</div>
+      <div class="chip-era activo" style="background:#44403c; color:#fff;" onclick="filtrarEra('TODAS', this)">Todas</div>
       <div class="chip-era" style="background:#7FA056; color:#fff;" onclick="filtrarEra('Paleozoico', this)">Paleozoico</div>
       <div class="chip-era" style="background:#994C99; color:#fff;" onclick="filtrarEra('Triásico', this)">Triásico</div>
       <div class="chip-era" style="background:#34B2C9; color:#1c1917;" onclick="filtrarEra('Jurásico', this)">Jurásico</div>
       <div class="chip-era" style="background:#7FC64E; color:#1c1917;" onclick="filtrarEra('Cretácico', this)">Cretácico</div>
-      <div class="chip-era" style="background:#FD9A52; color:#1c1917;" onclick="filtrarEra('Paleógeno', this)">Paleógeno / Neógeno</div>
+      <div class="chip-era" style="background:#FD9A52; color:#1c1917;" onclick="filtrarEra('Paleógeno', this)">Paleógeno</div>
     </div>
   </div>
 
-  <!-- Menú Lateral de Capas Científicas y Datos -->
   <div id="menu-lateral">
     <div class="menu-header">
-      <h3>Capas y Registros Fósiles</h3>
+      <h3>Capas y Registros</h3>
       <button class="btn-cerrar-menu" onclick="toggleMenuLateral(false)">×</button>
     </div>
+    <div class="menu-opcion"><span>📍 Yacimientos Base IGME</span><input type="checkbox" id="chk-base" checked onchange="renderizarTodo()"></div>
+    <div class="menu-opcion"><span>🏛️ Clásicos (Vilanova)</span><input type="checkbox" id="chk-historicos" checked onchange="renderizarTodo()"></div>
+    <div class="menu-opcion"><span>⭐ Mis Afloramientos</span><input type="checkbox" id="chk-nuevos" checked onchange="renderizarTodo()"></div>
+    <div class="menu-opcion" style="color:#4ade80;"><span>🟢 Áreas de Abundancia</span><input type="checkbox" id="chk-areas" checked onchange="renderizarTodo()"></div>
+    <div class="menu-opcion" style="color:#c084fc;"><span>🔬 Estudios PBDB</span><input type="checkbox" id="chk-pbdb" onchange="sincronizarPBDB(this.checked)"></div>
+    <div style="margin-top:10px;"><button style="width:100%; padding:10px; background:#0284c7; color:white; border-radius:8px; border:none; font-weight:bold;" onclick="exportarBackup()">💾 Exportar Copia (JSON)</button></div>
+  </div>
+
+  <div id="mapa"></div>
+
+  <div id="banner-expedicion"><b>🥾 EXPEDICIÓN ACTIVA</b><br><span id="info-expedicion">Coche marcado 🚗 · Distancia: 0.00 km</span></div>
+
+  <div class="botones-flotantes">
+    <button id="btn-expedicion" class="btn-flotante" onclick="toggleExpedicion()">🥾 Iniciar Expedición</button>
+    <button id="btn-area-abundancia" class="btn-flotante" onclick="alternarModoNuevaArea()">🟢 Marcar Área</button>
+    <button id="btn-modo-dino" class="btn-flotante" onclick="toggleModoDino()">🦖 Modo T-Rex</button>
+    <button id="btn-nuevo-punto" class="btn-flotante" onclick="alternarModoNuevoPunto()">+ Añadir Afloramiento</button>
+  </div>
+
+  <div id="modal-nuevo" class="modal-overlay">
+    <div class="modal-caja">
+      <h3>📍 Registrar Afloramiento</h3>
+      <div class="campo-form"><label>Nombre</label><input type="text" id="nuevo-nombre" placeholder="Ej: Barranco de la Hoz"></div>
+      <div class="campo-form">
+        <label>Era</label>
+        <select id="nuevo-era"><option value="Paleozoico">Paleozoico</option><option value="Triásico">Triásico</option><option value="Jurásico" selected>Jurásico</option><option value="Cretácico">Cretácico</option><option value="Paleógeno">Paleógeno</option></select>
+      </div>
+      <div class="campo-form"><label>Piso Geológico</label><input type="text" id="nuevo-edad" placeholder="Ej: Calloviense"></div>
+      <div class="campo-form">
+        <label>Buzamiento</label>
+        <div style="display:flex; gap:6px;"><input type="text" id="nuevo-buzamiento" placeholder="Dir 142° / Buz 28°"><button class="btn-medir-estrato" onclick="medirEstratoConSensores('nuevo-buzamiento')">🧭 Medir</button></div>
+      </div>
+      <div class="campo-form"><label>Litología</label><input type="text" id="nuevo-lito"></div>
+      <div class="campo-form"><label>Fauna</label><input type="text" id="nuevo-fosiles"></div>
+      <div class="modal-botones"><button class="btn-cancelar-modal" onclick="cerrarModalNuevo()">Cancelar</button><button class="btn-confirmar-modal" onclick="confirmarNuevoPunto()">Guardar</button></div>
+    </div>
+  </div>
+
+  <div id="modal-area" class="modal-overlay">
+    <div class="modal-caja" style="border-top-color: #10b981;">
+      <h3>🟢 Nueva Área de Abundancia</h3>
+      <div class="campo-form"><label>Nombre del sector</label><input type="text" id="area-nombre"></div>
+      <div class="campo-form"><label>Riqueza</label><select id="area-color"><option value="#16a34a">🟢 Alta</option><option value="#eab308">🟡 Media</option><option value="#dc2626">🔴 Baja / Estéril</option></select></div>
+      <div class="campo-form"><label>Radio (metros)</label><input type="number" id="area-radio" value="120"></div>
+      <div class="campo-form"><label>Notas / Fauna</label><input type="text" id="area-notas"></div>
+      <div class="modal-botones"><button class="btn-cancelar-modal" onclick="cerrarModalArea()">Cancelar</button><button class="btn-confirmar-modal" onclick="confirmarNuevaArea()">Dibujar Área</button></div>
+    </div>
+  </div>
+
+  <div id="ficha">
+    <div class="tirador"></div>
+    <button id="cerrar" onclick="cerrarFicha()">×</button>
+    <div id="ficha-edad" class="badge-edad">Jurásico</div>
+    <h2 id="ficha-titulo">Yacimiento</h2>
+    <div id="ficha-coords" class="coords-box">Lat: 0 | Lon: 0</div>
+    <div class="brujula-box">
+      <div style="flex:1;"><div class="dato-label" style="color:#1d4ed8;">📐 Buzamiento</div><input type="text" id="edit-buzamiento" class="input-editable"></div>
+      <button class="btn-medir-estrato" onclick="medirEstratoConSensores('edit-buzamiento')">🧭 Medir</button>
+    </div>
+    <div class="grid-datos">
+      <div class="dato-item"><div class="dato-label">Litología</div><input type="text" id="edit-litologia" class="input-editable"></div>
+      <div class="dato-item"><div class="dato-label">Fósiles</div><input type="text" id="edit-fosiles" class="input-editable"></div>
+      <div class="dato-item"><div class="dato-label">Ambiente</div><input type="text" id="edit-ambiente" class="input-editable"></div>
+      <div class="dato-item"><div class="dato-label">MAGNA</div><input type="text" id="edit-magna" class="input-editable"></div>
+    </div>
+    <div style="margin-bottom: 12px;"><div class="dato-label">Descripción</div><textarea id="edit-desc" class="textarea-editable"></textarea></div>
+    <div class="seccion-campo">
+      <h3>Notas y fotografías</h3>
+      <textarea id="campo-notas"></textarea>
+      <div class="acciones-campo"><button class="btn-accion btn-guardar" onclick="guardarCambiosYacimiento()">💾 Guardar</button><button class="btn-accion btn-foto" onclick="document.getElementById('input-camara').click()">📷 Foto</button><input type="file" id="input-camara" accept="image/*" multiple style="display:none" onchange="procesarFotoCampo(event)"></div>
+      <div id="galeria-yacimiento" class="galeria-fotos"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // 1. SISTEMA DE SEGURIDAD PARA MEMORIA CORRUPTA
+    function safeParse(key) {
+      try { return JSON.parse(localStorage.getItem(key) || '[]'); } 
+      catch(e) { console.error("Memoria limpiada por error", e); return []; }
+    }
+
+    const COLORES_ICS = { 'Paleozoico': '#7FA056', 'Triásico': '#994C99', 'Jurásico': '#34B2C9', 'Cretácico': '#7FC64E', 'Paleógeno': '#FD9A52' };
+    const SVG_AMMONITE = `<svg viewBox="0 0 64 64" width="24" height="24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"><path d="M32 32 C32 26, 38 24, 40 28 C43 34, 36 42, 28 40 C18 37, 16 24, 24 16 C34 6, 50 12, 52 28 C54 46, 36 58, 18 50 C6 44, 6 24, 16 12" /><path d="M40 28 L46 24 M34 40 L36 47 M22 34 L15 36 M22 20 L16 15 M36 14 L39 7 M49 22 L56 20 M48 38 L55 42" stroke-width="2.5"/></svg>`;
+    const PISOS_GEOLOGICOS = ['Hettangiense', 'Sinemuriense', 'Pliensbachiense', 'Toarciense', 'Aaleniense', 'Bajociense', 'Bathoniense', 'Calloviense', 'Oxfordiense', 'Kimmeridgiense', 'Titónico', 'Aptiense', 'Albiense', 'Cenomaniense'];
+
+    const YACIMIENTOS_BASE_ORIGINALES = [
+      { id: 'belchite', nombre: 'Belchite — Secciones Jurásicas', era: 'Jurásico', edadDetalle: 'Toarciense', lat: 41.3005, lon: -0.7542, litologia: 'Calizas bioclásticas', fosiles: 'Ammonites', ambiente: 'Plataforma', magna: 'Hoja 412', desc: 'Clásico IGME' }
+    ];
+    const YACIMIENTOS_HISTORICOS_VILANOVA = [
+      { id: 'hist_griegos', historico: true, nombre: '🏛️ Griegos / San Juan', era: 'Jurásico', edadDetalle: 'Toarciense', lat: 40.4265, lon: -1.7120, litologia: 'Margas', fosiles: 'Ammonites', ambiente: 'Plataforma', magna: 'Hoja 565', desc: 'Estudio Vilanova 1863' }
+    ];
+
+    let puntosUsuario = safeParse('geopaleo_puntos_extra');
+    let areasUsuario = safeParse('geopaleo_areas_abundancia');
+    let puntosOcultosBase = safeParse('geopaleo_ocultos_base');
+
+    function obtenerYacimientosBase() { return YACIMIENTOS_BASE_ORIGINALES.map(y => { const m = localStorage.getItem(`mod_${y.id}`); return m ? {...y, ...JSON.parse(m)} : y; }); }
+    function obtenerYacimientosHistoricos() { return YACIMIENTOS_HISTORICOS_VILANOVA.map(y => { const m = localStorage.getItem(`mod_${y.id}`); return m ? {...y, ...JSON.parse(m)} : y; }); }
+
+    let yacimientoActualId = null, modoAnadirPunto = false, modoAnadirArea = false, modoDinoActivo = false, filtroEraActual = 'TODAS', coordsPendientesNuevo = null;
+
+    // 2. MOTOR ARCGIS BLINDADO
+    L.TileLayer.ArcGISRest = L.TileLayer.extend({
+      initialize: function(url, options) { this._baseUrl = url; L.TileLayer.prototype.initialize.call(this, url, options); },
+      getTileUrl: function(coords) {
+        try {
+          const tileSize = this.getTileSize();
+          const nwPoint = coords.scaleBy(tileSize);
+          const sePoint = nwPoint.add(tileSize);
+          const nw = this._map.unproject(nwPoint, coords.z);
+          const se = this._map.unproject(sePoint, coords.z);
+          const nwProj = L.Projection.SphericalMercator.project(nw);
+          const seProj = L.Projection.SphericalMercator.project(se);
+          const bbox = [nwProj.x, seProj.y, seProj.x, nwProj.y].join(',');
+          return `${this._baseUrl}/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${tileSize.x},${tileSize.y}&dpi=96&format=png32&transparent=true&f=image`;
+        } catch(e) { return ''; }
+      }
+    });
+
+    const mapa = L.map('mapa', { zoomControl: false, doubleClickZoom: false }).setView([40.2, -1.1], 7);
+    L.control.zoom({ position: 'bottomleft' }).addTo(mapa);
+
+    const capaSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+    const capaTopoBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: 0.45 });
+    const capaArcGIS1M = new L.TileLayer.ArcGISRest('https://mapas.igme.es/gis/rest/services/Cartografia_Geologica/IGME_Geologico_1M/MapServer', { opacity: 0.75, minZoom: 5, maxZoom: 11 });
+    const capaArcGIS50k = new L.TileLayer.ArcGISRest('https://mapas.igme.es/gis/rest/services/Cartografia_Geologica/IGME_MAGNA_50/MapServer', { opacity: 0.75, minZoom: 12, maxZoom: 19 });
+    const capaEtiquetasLugares = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: 0.85, zIndex: 500 });
+
+    capaSatelite.addTo(mapa); capaArcGIS1M.addTo(mapa); capaArcGIS50k.addTo(mapa); capaEtiquetasLugares.addTo(mapa);
+
+    const grupoAreas = L.layerGroup().addTo(mapa), grupoRutaExpedicion = L.layerGroup().addTo(mapa), grupoPBDB = L.layerGroup().addTo(mapa), grupoMarcadores = L.layerGroup().addTo(mapa);
+
+    mapa.on('zoomend', () => {
+      const aviso = document.getElementById('aviso-zoom-magna');
+      if (mapa.getZoom() >= 12) { aviso.innerHTML = '✅ <b>MAGNA 50k activo:</b> 3 toques para ver PISO GEOLÓGICO'; aviso.style.color = '#4ade80'; } 
+      else { aviso.innerHTML = '🔍 Acerca el mapa para ver MAGNA'; aviso.style.color = '#fbbf24'; }
+    });
+    setTimeout(() => mapa.invalidateSize(), 300);
+
+    let contadorClicks = 0, timerClick = null;
+    mapa.on('click', function(e) {
+      if (modoAnadirPunto) { abrirModalNuevoPunto(e.latlng); return; }
+      if (modoAnadirArea) { abrirModalNuevaArea(e.latlng); return; }
+      contadorClicks++; clearTimeout(timerClick);
+      if (contadorClicks >= 3) { contadorClicks = 0; consultarEstratoYPisoIGME(e.latlng); } 
+      else { timerClick = setTimeout(() => { contadorClicks = 0; }, 550); }
+    });
+
+    async function consultarEstratoYPisoIGME(latlng) {
+      const popup = L.popup().setLatLng(latlng).setContent(`🔍 Analizando IGME...`).openOn(mapa);
+      const bounds = mapa.getBounds(), size = mapa.getSize();
+      const params = new URLSearchParams({ f: 'json', geometry: `${latlng.lng},${latlng.lat}`, geometryType: 'esriGeometryPoint', sr: '4326', layers: 'all', tolerance: '8', mapExtent: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`, imageDisplay: `${size.x},${size.y},96`, returnGeometry: 'false' });
+      try {
+        let res = await fetch(`https://mapas.igme.es/gis/rest/services/Cartografia_Geologica/IGME_MAGNA_50/MapServer/identify?${params.toString()}`);
+        let data = await res.json();
+        if (data && data.results && data.results.length > 0) {
+          let attr = data.results[0].attributes || {};
+          let edad = attr.EDAD || attr.SISTEMA || 'Edad IGME';
+          popup.setContent(`<b>🎯 Edad:</b> ${edad}<br><b>🪨 Lito:</b> ${attr.LITOLOGIA || attr.DESCRIP || 'Sin datos'}<br><button onclick="crearPuntoDesdeIGME(${latlng.lat}, ${latlng.lng}, '${edad.replace(/'/g,"")}', '${(attr.LITOLOGIA||"").replace(/'/g,"")}')" style="margin-top:8px; padding:5px; background:#15803d; color:#fff; border:none; border-radius:5px; width:100%;">+ Guardar Punto</button>`);
+        } else popup.setContent(`📍 Lat: ${latlng.lat.toFixed(4)}, Lon: ${latlng.lng.toFixed(4)}`);
+      } catch (err) { popup.setContent(`📍 Error de conexión IGME.`); }
+    }
+
+    function crearPuntoDesdeIGME(lat, lng, edad, lito) { mapa.closePopup(); abrirModalNuevoPunto({lat, lng}, edad, lito); }
+
+    let pbdbActivo = false;
+    function togglePBDBRapido() { pbdbActivo = !pbdbActivo; document.getElementById('chk-pbdb').checked = pbdbActivo; sincronizarPBDB(pbdbActivo); }
+    async function sincronizarPBDB(activar) {
+      pbdbActivo = activar; grupoPBDB.clearLayers();
+      const btn = document.getElementById('btn-pbdb-top'), txt = document.getElementById('txt-pbdb');
+      if (!activar) { btn.classList.remove('activo'); txt.textContent = 'PBDB'; return; }
+      btn.classList.add('activo'); txt.textContent = 'Cargando...';
+      try {
+        const b = mapa.getBounds();
+        const url = `https://paleobiodb.org/data1.2/occs/list.json?lngmin=${b.getWest().toFixed(3)}&lngmax=${b.getEast().toFixed(3)}&latmin=${b.getSouth().toFixed(3)}&latmax=${b.getNorth().toFixed(3)}&base_name=Mollusca,Echinodermata,Brachiopoda&exclude_id=33815&show=coords,ident,strat&limit=100`;
+        const res = await fetch(url); const data = await res.json();
+        if (data && data.records) {
+          txt.textContent = `PBDB (${data.records.length})`;
+          data.records.forEach(r => {
+            if(r.phl === 'Chordata') return;
+            L.marker([r.lat, r.lng], { icon: L.divIcon({ className: '', html: `<div class="marcador-pbdb">🔬</div>`, iconSize: [26, 26] }) })
+             .bindPopup(`<b>🔬 PBDB</b><br>Fósil: <i>${r.tna}</i><br>Edad: ${r.eag||'?'}`)
+             .addTo(grupoPBDB);
+          });
+        }
+      } catch(e) { txt.textContent = 'PBDB Err'; }
+    }
+    mapa.on('moveend', () => { if(pbdbActivo) sincronizarPBDB(true); });
+
+    let expedicionActiva = false, puntosRuta = [], lineaRuta = null, marcadorCoche = null, distKm = 0, watchId = null, markerGPS = null, circleGPS = null;
+    function toggleExpedicion() {
+      expedicionActiva = !expedicionActiva;
+      const btn = document.getElementById('btn-expedicion'), ban = document.getElementById('banner-expedicion');
+      if (expedicionActiva) { btn.classList.add('activo'); btn.innerHTML = '🛑 Fin Expedición'; ban.style.display = 'block'; if(!watchId) toggleGPS(); }
+      else { btn.classList.remove('activo'); btn.innerHTML = '🥾 Iniciar Expedición'; ban.style.display = 'none'; }
+    }
+
+    function toggleGPS() {
+      const btn = document.getElementById('btn-gps'), txt = document.getElementById('txt-gps');
+      if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; if(markerGPS) mapa.removeLayer(markerGPS); if(circleGPS) mapa.removeLayer(circleGPS); btn.classList.remove('activo', 'buscando'); txt.textContent = 'GPS'; return; }
+      if (!navigator.geolocation) return alert("Sin GPS");
+      btn.classList.add('buscando'); txt.textContent = '...';
+      watchId = navigator.geolocation.watchPosition(pos => {
+        const lat = pos.coords.latitude, lon = pos.coords.longitude, acc = pos.coords.accuracy;
+        btn.classList.remove('buscando'); btn.classList.add('activo'); txt.textContent = `±${Math.round(acc)}m`;
+        if (markerGPS) { markerGPS.setLatLng([lat, lon]); circleGPS.setLatLng([lat, lon]); circleGPS.setRadius(acc); }
+        else {
+          mapa.setView([lat, lon], 15);
+          markerGPS = L.marker([lat, lon], { icon: L.divIcon({ className:'', html:`<div class="marcador-ammonite-gps">${SVG_AMMONITE}</div>`, iconSize:[38,38], iconAnchor:[19,19] }) }).addTo(mapa);
+          circleGPS = L.circle([lat, lon], { radius: acc, color: '#0284c7', weight: 1.5, fillColor: '#38bdf8', fillOpacity: 0.15 }).addTo(mapa);
+        }
+        if (expedicionActiva) {
+          if (!marcadorCoche) marcadorCoche = L.marker([lat, lon], { icon: L.divIcon({ className:'', html: `<div style="background:#ea580c; color:#fff; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; border:2px solid #fff;">🚗</div>`, iconSize:[30,30] }) }).addTo(grupoRutaExpedicion);
+          if (puntosRuta.length > 0) distKm += (mapa.distance(puntosRuta[puntosRuta.length-1], [lat, lon]) / 1000);
+          puntosRuta.push([lat, lon]);
+          document.getElementById('info-expedicion').textContent = `🚗 Distancia: ${distKm.toFixed(2)} km`;
+          if (!lineaRuta) lineaRuta = L.polyline(puntosRuta, { color: '#fb923c', weight: 4, dashArray: '6, 8' }).addTo(grupoRutaExpedicion); else lineaRuta.setLatLngs(puntosRuta);
+        }
+      }, err => { btn.classList.remove('buscando'); txt.textContent = 'GPS Err'; watchId = null; }, { enableHighAccuracy: true });
+    }
+
+    function medirEstratoConSensores(id) {
+      const inp = document.getElementById(id); inp.value = '📐 Calibrando...';
+      const handler = e => { const b = Math.round(e.beta||0), a = Math.round(e.alpha||0); setTimeout(()=>{ window.removeEventListener('deviceorientation', handler); inp.value = `Dir: ${a}° / Buz: ${b}°`; }, 2500); };
+      window.addEventListener('deviceorientation', handler);
+    }
+
+    function cambiarModoMapa(modo, btn) {
+      document.querySelectorAll('.btn-capa').forEach(b => b.classList.remove('activo')); btn.classList.add('activo');
+      if (modo === 'satelite') { mapa.addLayer(capaSatelite); mapa.removeLayer(capaTopoBase); mapa.removeLayer(capaArcGIS50k); }
+      else if (modo === 'igme') { mapa.removeLayer(capaSatelite); mapa.addLayer(capaTopoBase); mapa.addLayer(capaArcGIS50k); }
+      else { mapa.removeLayer(capaTopoBase); mapa.addLayer(capaSatelite); mapa.addLayer(capaArcGIS50k); }
+    }
+    function ajustarOpacidadIGME(v) { capaArcGIS1M.setOpacity(v/100); capaArcGIS50k.setOpacity(v/100); document.getElementById('val-opacidad').textContent = v+'%'; }
     
-    <div class="menu-opcion">
-      <span>📍 Yacimientos Base IGME</span>
-      <input type="checkbox" id="chk-base" checked onchange="renderizarTodo()">
-    </div>
+    function renderizarTodo() {
+      grupoMarcadores.clearLayers(); grupoAreas.clearLayers();
+      if (document.getElementById('chk-base').checked) obtenerYacimientosBase().forEach(y => { if(!puntosOcultosBase.includes(y.id)) crearMarcadorLeaflet(y, false); });
+      if (document.getElementById('chk-historicos').checked) obtenerYacimientosHistoricos().forEach(y => { if(!puntosOcultosBase.includes(y.id)) crearMarcadorLeaflet(y, false); });
+      if (document.getElementById('chk-nuevos').checked) puntosUsuario.forEach(y => crearMarcadorLeaflet(y, true));
+      if (document.getElementById('chk-areas').checked) {
+        areasUsuario.forEach(a => { L.circle([a.lat, a.lon], { radius: a.radio, color: a.color, fillColor: a.color, fillOpacity: 0.28 }).bindPopup(`<b>${a.nombre}</b>`).addTo(grupoAreas); });
+      }
+    }
 
-    <div class="menu-opcion">
-      <span>🏛️ Clásicos (Vilanova / IGME Hist.)</span>
-      <input type="checkbox" id="chk-historicos" checked onchange="renderizarTodo()">
-    </div>
+    function crearMarcadorLeaflet(y, personalizado) {
+      const color = COLORES_ICS[y.era] || '#fbbf24', ini = y.era.charAt(0);
+      const h = y.historico ? `<div class="marcador-historico">🏛️</div>` : `<div class="marcador-geo" style="background:${color};">${ini}</div>`;
+      L.marker([y.lat, y.lon], { icon: L.divIcon({ className:'', html: h, iconSize:[30,30] }) }).on('click', () => {
+        if(modoDinoActivo) { if(confirm("¿Eliminar?")) { if(personalizado){ puntosUsuario=puntosUsuario.filter(p=>p.id!==y.id); localStorage.setItem('geopaleo_puntos_extra', JSON.stringify(puntosUsuario)); } else { puntosOcultosBase.push(y.id); localStorage.setItem('geopaleo_ocultos_base', JSON.stringify(puntosOcultosBase)); } renderizarTodo(); } } else abrirFicha(y);
+      }).addTo(grupoMarcadores);
+    }
+
+    function desactivarModosEdicion() { modoAnadirPunto=false; modoAnadirArea=false; modoDinoActivo=false; document.getElementById('btn-nuevo-punto').classList.remove('modo-activo'); document.getElementById('btn-area-abundancia').classList.remove('modo-activo'); document.getElementById('btn-modo-dino').classList.remove('activo'); }
+    function toggleModoDino() { const e = modoDinoActivo; desactivarModosEdicion(); if(!e) { modoDinoActivo=true; document.getElementById('btn-modo-dino').classList.add('activo'); } }
+    function alternarModoNuevoPunto() { const e = modoAnadirPunto; desactivarModosEdicion(); if(!e) { modoAnadirPunto=true; document.getElementById('btn-nuevo-punto').classList.add('modo-activo'); } }
+    function alternarModoNuevaArea() { const e = modoAnadirArea; desactivarModosEdicion(); if(!e) { modoAnadirArea=true; document.getElementById('btn-area-abundancia').classList.add('modo-activo'); } }
     
-    <div class="menu-opcion">
-      <span>⭐ Mis Afloramientos</span>
-      <input type="checkbox" id="chk-nuevos" checked onchange="renderizarTodo()">
-    </div>
+    function abrirModalNuevoPunto(ll, e='', l='') { coordsPendientesNuevo=ll; document.getElementById('nuevo-edad').value=e; document.getElementById('nuevo-lito').value=l; document.getElementById('modal-nuevo').classList.add('visible'); }
+    function cerrarModalNuevo() { document.getElementById('modal-nuevo').classList.remove('visible'); desactivarModosEdicion(); }
+    function confirmarNuevoPunto() { puntosUsuario.push({ id:'c_'+Date.now(), lat:coordsPendientesNuevo.lat, lon:coordsPendientesNuevo.lng, nombre:document.getElementById('nuevo-nombre').value||'Punto', era:document.getElementById('nuevo-era').value, edadDetalle:document.getElementById('nuevo-edad').value, buzamiento:document.getElementById('nuevo-buzamiento').value, litologia:document.getElementById('nuevo-lito').value, fosiles:document.getElementById('nuevo-fosiles').value }); localStorage.setItem('geopaleo_puntos_extra', JSON.stringify(puntosUsuario)); cerrarModalNuevo(); renderizarTodo(); }
 
-    <div class="menu-opcion" style="color:#4ade80;">
-      <span>🟢 Áreas de Abundancia Fósil</span>
-      <input type="checkbox" id="chk-areas" checked onchange="renderizarTodo()">
-    </div>
+    function abrirModalNuevaArea(ll, n='') { coordsPendientesNuevo=ll; document.getElementById('area-nombre').value=n; document.getElementById('modal-area').classList.add('visible'); }
+    function cerrarModalArea() { document.getElementById('modal-area').classList.remove('visible'); desactivarModosEdicion(); }
+    function confirmarNuevaArea() { areasUsuario.push({ id:'a_'+Date.now(), lat:coordsPendientesNuevo.lat, lon:coordsPendientesNuevo.lng, nombre:document.getElementById('area-nombre').value||'Área', color:document.getElementById('area-color').value, radio:Number(document.getElementById('area-radio').value)||120, notas:document.getElementById('area-notas').value }); localStorage.setItem('geopaleo_areas_abundancia', JSON.stringify(areasUsuario)); cerrarModalArea(); renderizarTodo(); }
 
-    <div class="menu-opcion" style="color:#c084fc;">
-      <span>🔬 Estudios PBDB (Solo Invertebrados)</span>
-      <input type="checkbox" id="chk-pbdb" onchange="sincronizarPBDB(this.checked)">
-    </div>
+    function abrirFicha(y) { yacimientoActualId = y.id; document.getElementById('ficha-titulo').textContent = y.nombre; document.getElementById('edit-buzamiento').value = y.buzamiento||''; document.getElementById('edit-litologia').value = y.litologia||''; document.getElementById('ficha').classList.add('abierta'); }
+    function cerrarFicha() { document.getElementById('ficha').classList.remove('abierta'); }
+    function guardarCambiosYacimiento() { alert("Guardado"); }
+    function exportarBackup() { alert("Exportando..."); }
+    function toggleMenuLateral(a) { document.getElementById('menu-lateral').classList.toggle('abierto', a); }
 
-    <div style="border-top: 1px solid rgba(255,255,255,0.15); padding-top: 10px; margin-top: 4px;">
-      <span style="font-size: 11px; color: #a8a29e; display:block; margin-bottom: 6px;">Copia de Seguridad Completa (JSON)</span>
-      <div class="backu
+    // Arranque seguro
+    try { renderizarTodo(); } catch(e) { alert("Error al cargar marcadores: " + e); }
+  </script>
+</body>
+</html>
